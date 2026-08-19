@@ -1,0 +1,62 @@
+.body {
+  min-height: 60vh;
+}
+
+.search {
+  width: 100%;
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-sunken);
+  border: none;
+  font-size: 15px;
+}
+
+.noResults {
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  padding: var(--space-5) 0;
+}
+
+.group {
+  margin-bottom: var(--space-4);
+}
+
+.groupName {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: var(--space-3) var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.chip:active {
+  background: var(--color-surface-raised);
+}
+
+.chipIcon {
+  color: var(--color-text);
+}
+
+.chipLabel {
+  font-size: 11px;
+  text-align: center;
+  color: var(--color-text-muted);
+  line-height: 1.2;
+}

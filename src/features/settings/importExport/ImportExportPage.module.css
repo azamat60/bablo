@@ -1,0 +1,101 @@
+.root {
+  padding: calc(var(--safe-top) + var(--space-5)) var(--space-4) var(--space-6);
+}
+
+.back {
+  color: var(--color-primary);
+  font-size: 15px;
+  font-weight: 500;
+  margin-bottom: var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 var(--space-5);
+}
+
+.card {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  margin-bottom: var(--space-4);
+}
+
+.cardTitle {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: var(--space-2);
+}
+
+.cardNote {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+  line-height: 1.5;
+}
+
+.button {
+  width: 100%;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  font-weight: 700;
+  font-size: 14px;
+  text-align: center;
+}
+
+.secondaryButton {
+  width: 100%;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-weight: 600;
+  font-size: 14px;
+  text-align: center;
+  margin-top: var(--space-2);
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.statusText {
+  font-size: 13px;
+  color: var(--color-income);
+  margin-top: var(--space-2);
+}
+
+.errorText {
+  font-size: 13px;
+  color: var(--color-expense);
+  margin-top: var(--space-2);
+}
+
+.fieldRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  margin-bottom: var(--space-3);
+  text-align: left;
+}
+
+.fieldLabel {
+  flex: 1;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.fieldValue {
+  font-size: 13px;
+  font-weight: 600;
+}

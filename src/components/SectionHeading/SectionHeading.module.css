@@ -1,0 +1,18 @@
+.root {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 700;
+  flex: 1;
+}
+
+.action {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+}

@@ -1,0 +1,196 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding-top: calc(var(--safe-top) + var(--space-3));
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-4) var(--space-2);
+}
+
+.back {
+  color: var(--color-primary);
+  font-size: 15px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.title {
+  flex: 1;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.headerSpacer {
+  width: 48px;
+  flex-shrink: 0;
+}
+
+.amountWrap {
+  text-align: center;
+  padding: var(--space-4) var(--space-4) var(--space-2);
+}
+
+.amount {
+  font-size: 44px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.amountExpense {
+  color: var(--color-text);
+}
+
+.amountIncome {
+  color: var(--color-income);
+}
+
+.currency {
+  font-size: 16px;
+  color: var(--color-text-muted);
+  margin-left: var(--space-2);
+}
+
+.fields {
+  padding: 0 var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.fieldRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  text-align: left;
+}
+
+.fieldIcon {
+  width: 24px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.fieldLabel {
+  flex: 1;
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+
+.fieldValue {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.memoInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  text-align: right;
+}
+
+.dateChips {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.dateChip {
+  position: relative;
+  padding: 6px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dateChipActive {
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+.dateChipCustom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+}
+
+.dateInputHidden {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.budgetHint {
+  padding: var(--space-2) var(--space-3) 0;
+}
+
+.budgetHintRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-1);
+}
+
+.splitToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-1);
+}
+
+.splitToggleLabel {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.primaryWrap {
+  margin-top: auto;
+  padding: var(--space-4) var(--space-4) var(--space-2);
+  text-align: center;
+}
+
+.disabledReason {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.primaryButton {
+  width: 100%;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.primaryButton:disabled {
+  background: var(--color-surface-sunken);
+  color: var(--color-text-faint);
+}
+
+.padWrap {
+  padding-bottom: calc(var(--safe-bottom) + var(--space-3));
+}

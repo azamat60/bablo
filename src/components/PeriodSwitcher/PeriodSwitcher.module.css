@@ -1,0 +1,55 @@
+.root {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.kindSelect {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-primary);
+  background: transparent;
+  border: none;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: var(--space-1);
+}
+
+.kindSelectWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.chevron {
+  color: var(--color-primary);
+  pointer-events: none;
+}
+
+.rangeNav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.rangeArrow {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+}
+
+.rangeLabel {
+  font-size: 14px;
+  font-weight: 600;
+  min-width: 96px;
+  text-align: center;
+}

@@ -1,0 +1,24 @@
+.card {
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.plain {
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.raised {
+  background: var(--color-surface);
+  box-shadow: var(--shadow-float);
+}
+
+.sunken {
+  background: var(--color-surface-sunken);
+}
+
+.gradient {
+  background: var(--gradient-hero);
+  color: var(--color-primary-text);
+  box-shadow: var(--shadow-float);
+}

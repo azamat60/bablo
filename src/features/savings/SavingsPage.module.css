@@ -1,0 +1,137 @@
+.root {
+  padding: calc(var(--safe-top) + var(--space-3)) var(--space-4) var(--space-6);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.back {
+  color: var(--color-primary);
+  font-size: 15px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.addIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-sunken);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero {
+  margin-bottom: var(--space-5);
+}
+
+.heroLabel {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.heroValue {
+  font-size: 30px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  margin: var(--space-1) 0 var(--space-4);
+}
+
+.heroProgress {
+  margin-bottom: var(--space-2);
+  background: rgba(255, 255, 255, 0.24) !important;
+}
+
+.heroSubline {
+  font-size: 12px;
+  opacity: 0.85;
+  line-height: 1.5;
+}
+
+.list {
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  margin-bottom: var(--space-2);
+}
+
+.goalRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.goalRow:last-child {
+  border-bottom: none;
+}
+
+.goalIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.goalBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.goalTopLine {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.goalName {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.goalAmount {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.goalTarget {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.addButton {
+  width: 100%;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1.5px dashed var(--color-border);
+  color: var(--color-text-muted);
+  font-weight: 600;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}

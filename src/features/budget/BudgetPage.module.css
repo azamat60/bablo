@@ -1,0 +1,133 @@
+.root {
+  padding: calc(var(--safe-top) + var(--space-4)) var(--space-4) var(--space-6);
+}
+
+.monthRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.monthArrow {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--color-text-muted);
+}
+
+.monthLabel {
+  font-size: 17px;
+  font-weight: 700;
+  min-width: 160px;
+  text-align: center;
+}
+
+.hero {
+  text-align: center;
+  margin-bottom: var(--space-3);
+}
+
+.savingsLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: var(--space-5);
+}
+
+.heroLabel {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-1);
+}
+
+.heroValue {
+  font-size: 32px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.heroPositive {
+  color: var(--color-income);
+}
+
+.heroNegative {
+  color: var(--color-expense);
+}
+
+.heroHint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: var(--space-2);
+}
+
+.group {
+  margin-bottom: var(--space-5);
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  margin-bottom: var(--space-2);
+  text-align: left;
+}
+
+.groupChevron {
+  color: var(--color-text-faint);
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.groupChevronOpen {
+  transform: rotate(180deg);
+}
+
+.groupDot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+}
+
+.groupName {
+  font-size: 15px;
+  font-weight: 700;
+  flex: 1;
+}
+
+.groupAvailable {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.categoryList {
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.showAllButton {
+  width: 100%;
+  padding: var(--space-3);
+  margin-top: var(--space-2);
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+}

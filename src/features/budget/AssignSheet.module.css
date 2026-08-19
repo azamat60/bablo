@@ -1,0 +1,76 @@
+.summary {
+  display: flex;
+  justify-content: space-around;
+  padding: var(--space-3) 0 var(--space-4);
+  text-align: center;
+}
+
+.summaryItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.summaryLabel {
+  font-size: 11px;
+  color: var(--color-text-faint);
+  text-transform: uppercase;
+}
+
+.summaryValue {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.amountWrap {
+  text-align: center;
+  padding-bottom: var(--space-3);
+}
+
+.amount {
+  font-size: 36px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.currency {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  margin-left: var(--space-2);
+}
+
+.goalField {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  margin-bottom: var(--space-3);
+}
+
+.goalLabel {
+  flex: 1;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.goalInput {
+  width: 110px;
+  background: transparent;
+  border: none;
+  text-align: right;
+  font-size: 15px;
+}
+
+.saveButton {
+  width: 100%;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: var(--space-2);
+}

@@ -1,0 +1,22 @@
+.root {
+  display: inline-flex;
+  padding: 3px;
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-pill);
+  gap: 2px;
+}
+
+.option {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.optionActive {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-card);
+}

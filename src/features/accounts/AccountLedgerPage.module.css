@@ -1,0 +1,84 @@
+.root {
+  padding: calc(var(--safe-top) + var(--space-4)) 0 var(--space-6);
+}
+
+.header {
+  padding: 0 var(--space-4);
+}
+
+.headerTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.back {
+  color: var(--color-primary);
+  font-size: 15px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.reconcileButton {
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 600;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.name {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.balance {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.dayLabel {
+  padding: var(--space-3) var(--space-4) var(--space-1);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dayGroup {
+  background: var(--color-surface);
+  margin: 0 var(--space-4) var(--space-3);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.emptyState {
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 14px;
+}

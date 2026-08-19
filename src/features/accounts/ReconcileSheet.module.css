@@ -1,0 +1,72 @@
+.field {
+  margin-bottom: var(--space-4);
+}
+
+.label {
+  display: block;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.input {
+  width: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  font-size: 16px;
+}
+
+.summary {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  margin-bottom: var(--space-4);
+}
+
+.summaryRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  padding: var(--space-1) 0;
+}
+
+.summaryLabel {
+  color: var(--color-text-muted);
+}
+
+.differenceOk {
+  color: var(--color-income);
+  font-weight: 700;
+}
+
+.differenceBad {
+  color: var(--color-expense);
+  font-weight: 700;
+}
+
+.button {
+  width: 100%;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: var(--space-2);
+}
+
+.button:disabled {
+  opacity: 0.5;
+}
+
+.secondaryButton {
+  width: 100%;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 600;
+  font-size: 14px;
+}

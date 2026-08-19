@@ -1,0 +1,59 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  text-align: left;
+}
+
+.optionSelected {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+}
+
+.optionBody {
+  flex: 1;
+}
+
+.optionTitle {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.optionDescription {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.optionIcon {
+  font-size: 22px;
+  width: 28px;
+  text-align: center;
+}
+
+.optionCode {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  width: 36px;
+  flex-shrink: 0;
+}
+
+.check {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}

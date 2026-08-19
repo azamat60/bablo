@@ -1,0 +1,80 @@
+.field {
+  margin-bottom: var(--space-4);
+}
+
+.label {
+  display: block;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.textInput {
+  width: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  font-size: 16px;
+}
+
+.amountInput {
+  width: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  font-size: 16px;
+  text-align: right;
+}
+
+.iconRow {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+}
+
+.iconChip {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.iconChipActive {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.colorRow {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.colorSwatch {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-pill);
+  border: 2px solid transparent;
+}
+
+.saveButton {
+  width: 100%;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  font-weight: 700;
+  font-size: 16px;
+  margin-top: var(--space-2);
+}
+
+.saveButton:disabled {
+  opacity: 0.5;
+}

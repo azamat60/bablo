@@ -1,0 +1,87 @@
+.root {
+  padding: calc(var(--safe-top) + var(--space-5)) var(--space-4) var(--space-6);
+}
+
+.back {
+  color: var(--color-primary);
+  font-size: 15px;
+  font-weight: 500;
+  margin-bottom: var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 var(--space-4);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.rowIcon {
+  width: 26px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.rowBody {
+  flex: 1;
+}
+
+.rowTitle {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.rowSubtitle {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.rowAmount {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.removeButton {
+  display: flex;
+  align-items: center;
+  color: var(--color-text-faint);
+}
+
+.addButton {
+  width: 100%;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1.5px dashed var(--color-border);
+  color: var(--color-text-muted);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+.emptyState {
+  color: var(--color-text-muted);
+  font-size: 14px;
+  padding: var(--space-4) 0;
+}
