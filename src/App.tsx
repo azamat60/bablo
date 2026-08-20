@@ -49,7 +49,7 @@ export function App() {
           <span className={styles.aiJobsBadge}>{pendingJobs}</span>
         </Link>
       )}
-      <div className={styles.content}>
+      <div className={`${styles.content} ${showChrome ? styles.contentWithChrome : ''}`}>
         <Outlet />
       </div>
       {showChrome && <TabBar showFab={showFab} />}

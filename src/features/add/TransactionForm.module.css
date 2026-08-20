@@ -1,7 +1,7 @@
 .root {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  min-height: 100%;
   padding-top: calc(var(--safe-top) + var(--space-3));
 }
 

@@ -1,5 +1,5 @@
 .root {
-  min-height: 100dvh;
+  min-height: 100%;
   padding-top: calc(var(--safe-top) + var(--space-3));
   padding-bottom: calc(var(--safe-bottom) + var(--space-6));
 }
