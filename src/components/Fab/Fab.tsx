@@ -24,7 +24,7 @@ export function Fab() {
     <div className={styles.root} ref={rootRef}>
       {open && (
         <>
-          <div className={styles.scrim} />
+          <button type="button" className={styles.scrim} aria-label={t.fab.closeAria} onClick={() => setOpen(false)} />
           <ul className={styles.menu}>
             {FAB_ACTIONS.map((action) => (
               <li key={action.to}>
