@@ -22,6 +22,7 @@ import {
 } from '@/features/add';
 import { OnboardingPage } from '@/features/onboarding';
 import { SavingsPage } from '@/features/savings';
+import { GroupDetailPage } from '@/features/groups';
 
 export const router = createBrowserRouter([
   {
@@ -32,6 +33,7 @@ export const router = createBrowserRouter([
       { path: 'budget', element: <BudgetPage /> },
       { path: 'accounts', element: <AccountsPage /> },
       { path: 'accounts/:id', element: <AccountLedgerPage /> },
+      { path: 'groups/:id', element: <GroupDetailPage /> },
       { path: 'transactions', element: <TransactionsPage /> },
       { path: 'transactions/:id', element: <EditTransactionRoute /> },
       { path: 'reports', element: <ReportsPage /> },

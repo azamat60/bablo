@@ -179,6 +179,33 @@ export const en = {
     updated: (when: string) => `Updated: ${when}`,
   },
 
+  groupDetail: {
+    searchPlaceholder: 'Search by comments',
+    budget: 'Budget',
+    expense: 'Expense',
+    income: 'Income',
+    perDay: '~ a day',
+    change: 'change',
+    subcategories: 'Subcategories',
+    operations: 'List of operations',
+    empty: 'No operations this month',
+    addAria: 'Add transaction',
+    editAria: 'Edit category',
+  },
+
+  groupEdit: {
+    title: 'Category',
+    icon: 'Icon',
+    name: 'Title',
+    subcategories: 'Subcategories',
+    subcategoryPlaceholder: 'Subcategory name',
+    add: 'Add',
+    save: 'Save',
+    delete: 'Delete category',
+    deleteConfirm: 'The category and its subcategories will be archived. Transactions are kept.',
+    removeAria: 'Remove subcategory',
+  },
+
   transfer: {
     back: 'Back',
     title: 'Transfer',

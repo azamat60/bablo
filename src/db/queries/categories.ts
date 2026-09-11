@@ -79,3 +79,34 @@ export async function deleteCategoryIfUnused(id: string): Promise<'deleted' | 'a
   await db.categories.delete(id);
   return 'deleted';
 }
+
+export function useCategoryGroup(id: string | undefined): CategoryGroupWithCategories | undefined {
+  return useLiveQuery(async () => {
+    if (!id) return undefined;
+    const group = await db.categoryGroups.get(id);
+    if (!group) return undefined;
+    const categories = await db.categories.where('groupId').equals(id).sortBy('order');
+    return { ...group, categories };
+  }, [id]);
+}
+
+export type CategoryGroupPatch = Partial<Pick<CategoryGroup, 'name' | 'icon' | 'color' | 'bucket'>>;
+
+export async function updateCategoryGroup(id: string, patch: CategoryGroupPatch): Promise<void> {
+  const group = await db.categoryGroups.get(id);
+  if (!group) return;
+  await db.categoryGroups.update(id, { ...patch, ...touchMeta(group.rev) });
+}
+
+/** Archives the group and every category in it; history stays intact. */
+export async function archiveCategoryGroup(id: string): Promise<void> {
+  const group = await db.categoryGroups.get(id);
+  if (!group) return;
+  await db.transaction('rw', db.categoryGroups, db.categories, async () => {
+    await db.categoryGroups.update(id, { archived: true, ...touchMeta(group.rev) });
+    const children = await db.categories.where('groupId').equals(id).toArray();
+    for (const child of children) {
+      await db.categories.update(child.id, { archived: true, ...touchMeta(child.rev) });
+    }
+  });
+}

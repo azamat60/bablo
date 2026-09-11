@@ -14,7 +14,15 @@ import { useLocaleSync } from '@/hooks/useLocaleSync';
 import { useT } from '@/i18n';
 import styles from './App.module.css';
 
-const CHROMELESS_PREFIXES = ['/settings/', '/add', '/onboarding', '/accounts/', '/transactions/', '/ai-jobs'];
+const CHROMELESS_PREFIXES = [
+  '/settings/',
+  '/add',
+  '/onboarding',
+  '/accounts/',
+  '/groups/',
+  '/transactions/',
+  '/ai-jobs',
+];
 
 export function App() {
   const location = useLocation();

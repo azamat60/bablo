@@ -182,6 +182,33 @@ export const ru: Dictionary = {
     updated: (when: string) => `Обновлено: ${when}`,
   },
 
+  groupDetail: {
+    searchPlaceholder: 'Поиск по комментариям',
+    budget: 'Бюджет',
+    expense: 'Расход',
+    income: 'Доход',
+    perDay: '~ в день',
+    change: 'изменить',
+    subcategories: 'Подкатегории',
+    operations: 'Список операций',
+    empty: 'В этом месяце операций нет',
+    addAria: 'Добавить операцию',
+    editAria: 'Редактировать категорию',
+  },
+
+  groupEdit: {
+    title: 'Категория',
+    icon: 'Иконка',
+    name: 'Название',
+    subcategories: 'Подкатегории',
+    subcategoryPlaceholder: 'Название подкатегории',
+    add: 'Добавить',
+    save: 'Сохранить',
+    delete: 'Удалить категорию',
+    deleteConfirm: 'Категория и её подкатегории уйдут в архив. Операции сохранятся.',
+    removeAria: 'Убрать подкатегорию',
+  },
+
   transfer: {
     back: 'Назад',
     title: 'Перевод',

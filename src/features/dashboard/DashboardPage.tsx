@@ -86,9 +86,9 @@ export function DashboardPage() {
   }, []);
 
   /**
-   * Tapping a tile opens the composer with that tile as one endpoint. This is
-   * the keyboard- and screen-reader-reachable path to the same outcome as
-   * dragging, so it must keep working once drag lands.
+   * Tapping a tile opens its detail page (stats, subcategories, operations);
+   * dragging creates. The detail page carries an add button, so creating a
+   * transaction stays reachable without the drag gesture.
    */
   const handleTile = useCallback(
     (section: DashboardSection, tileId: string) => {
@@ -96,9 +96,7 @@ export function DashboardPage() {
       if (tileId === ADD_TILE_ID.income || tileId === ADD_TILE_ID.expenses) {
         return void navigate('/settings/categories');
       }
-      const route =
-        section.id === 'income' ? '/add/income' : section.id === 'expenses' ? '/add/expense' : '/add/expense';
-      void navigate(route);
+      void navigate(section.id === 'accounts' ? `/accounts/${tileId}` : `/groups/${tileId}`);
     },
     [navigate],
   );
