@@ -19,6 +19,8 @@ import {
   TextAiPage,
   ReviewDraftPage,
   AiJobsPage,
+  StatementImportPage,
+  StatementReviewPage,
 } from '@/features/add';
 import { OnboardingPage } from '@/features/onboarding';
 import { SavingsPage } from '@/features/savings';
@@ -51,6 +53,8 @@ export const router = createBrowserRouter([
       { path: 'add/voice', element: <VoiceCapturePage /> },
       { path: 'add/text-ai', element: <TextAiPage /> },
       { path: 'add/review', element: <ReviewDraftPage /> },
+      { path: 'add/statement', element: <StatementImportPage /> },
+      { path: 'add/statement/review', element: <StatementReviewPage /> },
       { path: 'ai-jobs', element: <AiJobsPage /> },
       { path: 'savings', element: <SavingsPage /> },
     ],

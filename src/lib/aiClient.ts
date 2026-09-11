@@ -1,6 +1,6 @@
 import { db } from '@/db/db';
 import { todayIsoDate } from '@/domain/transactions';
-import type { AiDraft, AiRequestContext } from './aiTypes';
+import type { AiDraft, AiRequestContext, AiStatement } from './aiTypes';
 
 export type AiContextOptions = {
   /** The group the user is already in; its categories are sent as preferred. */
@@ -84,4 +84,14 @@ export async function parseText(text: string, options?: AiContextOptions): Promi
   });
   const { draft } = await readJsonOrThrow<{ draft: AiDraft }>(response);
   return draft;
+}
+
+export async function parseStatement(file: File, options?: AiContextOptions): Promise<AiStatement> {
+  const context = await buildAiContext(options);
+  const formData = new FormData();
+  formData.append('file', file, file.name || 'statement.pdf');
+  formData.append('context', JSON.stringify(context));
+  const response = await fetch('/api/ai/statement', { method: 'POST', body: formData });
+  const { statement } = await readJsonOrThrow<{ statement: AiStatement }>(response);
+  return statement;
 }
