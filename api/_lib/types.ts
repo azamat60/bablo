@@ -32,3 +32,23 @@ export type AiDraft = {
   currency: string | null;
   transactions: AiDraftTransaction[];
 };
+
+export type AiStatementTransactionKind = 'expense' | 'income' | 'transfer';
+
+export type AiStatementTransaction = {
+  date: string;
+  amount: number;
+  kind: AiStatementTransactionKind;
+  payee: string | null;
+  categoryId: string;
+  memo: string | null;
+  confidence: number;
+};
+
+export type AiStatement = {
+  accountName: string | null;
+  currency: string | null;
+  periodStart: string | null;
+  periodEnd: string | null;
+  transactions: AiStatementTransaction[];
+};

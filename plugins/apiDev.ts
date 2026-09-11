@@ -12,6 +12,7 @@ const API_ROUTES: Record<string, string> = {
   '/api/ai/receipt': '/api/ai/receipt.ts',
   '/api/ai/voice': '/api/ai/voice.ts',
   '/api/ai/text': '/api/ai/text.ts',
+  '/api/ai/statement': '/api/ai/statement.ts',
   '/api/ai/insights': '/api/ai/insights.ts',
 };
 

@@ -5,3 +5,5 @@ export { VoiceCapturePage } from './VoiceCapturePage';
 export { TextAiPage } from './TextAiPage';
 export { ReviewDraftPage } from './ReviewDraftPage';
 export { AiJobsPage } from './AiJobsPage';
+export { StatementImportPage } from './StatementImportPage';
+export { StatementReviewPage } from './StatementReviewPage';
