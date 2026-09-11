@@ -206,6 +206,24 @@ export const en = {
     removeAria: 'Remove subcategory',
   },
 
+  composerAi: {
+    voice: 'Voice',
+    receipt: 'Receipt',
+    text: 'Text',
+    stop: 'Stop',
+    takePhoto: 'Take photo',
+    fromGallery: 'From gallery',
+    parse: 'Parse',
+    retry: 'Retry',
+    remove: 'Remove',
+    categoryChanged: (name: string) => `AI picked a category: ${name}`,
+    lowConfidence: 'AI is unsure — please check',
+    extraIgnored: (n: number) => `Skipped ${n} item(s) of the other kind`,
+    revert: 'Revert',
+    nothingFound: 'AI found no transaction in this input',
+    parseMemo: 'Parse the comment with AI',
+  },
+
   transfer: {
     back: 'Back',
     title: 'Transfer',

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Split, X } from 'lucide-react';
+import { Sparkles, Split, X } from 'lucide-react';
 import { NumberPad } from '@/components/NumberPad';
 import { NUMBER_PAD_DISMISS_KEY } from '@/components/NumberPad/NumberPad.constants';
 import { AmountDisplay } from '@/components/AmountDisplay';
@@ -21,6 +21,11 @@ import { ComposerEndpoints } from './ComposerEndpoints';
 import { SplitsEditor } from '../SplitsEditor';
 import { SuggestionChip } from '@/components/SuggestionChip';
 import { useSuggestion } from './useSuggestion';
+import { ComposerAiBar } from './ComposerAiBar';
+import { aiDraftToPatch } from '../ai/applyAiDraft';
+import { useCategoryGroups } from '@/db/queries/categories';
+import type { AiParseResult } from '../ai/useAiParse';
+import type { TransactionSource } from '@/db/types';
 import styles from './Composer.module.css';
 
 export type ComposerPageProps = {
@@ -44,6 +49,14 @@ export function ComposerPage({ seedKind, editingId }: ComposerPageProps) {
   const [groupPicker, setGroupPicker] = useState(false);
   const [padOpen, setPadOpen] = useState(true);
   const [suggestionDismissed, setSuggestionDismissed] = useState(false);
+  const groups = useCategoryGroups();
+
+  // What the last AI capture did, so the user can see and undo a category switch.
+  const [aiNotice, setAiNotice] = useState<{
+    text: string;
+    warn: boolean;
+    revert?: { groupId?: string; categoryId?: string };
+  } | null>(null);
 
   // One-way sync: the calculator owns its own runningTotal/pendingOp, the
   // draft only mirrors the resulting text so it survives navigation.
@@ -69,6 +82,44 @@ export function ComposerPage({ seedKind, editingId }: ComposerPageProps) {
     if (!suggestion) return;
     patch({ categoryId: suggestion.categoryId });
     if (suggestion.amountMinor !== undefined) pad.reset(suggestion.amountMinor / 100);
+  };
+
+  const applyAiResult = (result: AiParseResult, source: TransactionSource) => {
+    const applied = aiDraftToPatch(result.draft, {
+      groups,
+      kind: draft.kind,
+      currentGroupId: draft.groupId,
+      currentMemo: draft.memo,
+      currentDate: draft.date,
+    });
+    if (!applied) {
+      setAiNotice({ text: t.composerAi.nothingFound, warn: true });
+      return;
+    }
+    const previous = { groupId: draft.groupId, categoryId: draft.categoryId };
+    const confidences = result.draft.transactions.map((tx) => tx.confidence);
+    patch({ ...applied.patch, source, aiConfidence: Math.min(...confidences) });
+    pad.reset(applied.amountMajor);
+    setSuggestionDismissed(true);
+
+    const changedGroup = applied.categoryChanged ? groups.find((g) => g.id === applied.patch.groupId) : undefined;
+    const changedCategory = changedGroup?.categories.find((c) => c.id === applied.patch.categoryId);
+    const lines = [
+      changedGroup ? t.composerAi.categoryChanged(`${changedGroup.name} / ${changedCategory?.name ?? ''}`) : null,
+      applied.lowConfidence ? t.composerAi.lowConfidence : null,
+      applied.ignoredCount > 0 ? t.composerAi.extraIgnored(applied.ignoredCount) : null,
+    ].filter((line): line is string => line !== null);
+    setAiNotice(
+      lines.length > 0
+        ? { text: lines.join(' · '), warn: applied.lowConfidence, revert: changedGroup ? previous : undefined }
+        : null,
+    );
+  };
+
+  const revertAi = () => {
+    if (aiNotice?.revert)
+      patch({ groupId: aiNotice.revert.groupId, categoryId: aiNotice.revert.categoryId, splits: [] });
+    setAiNotice(null);
   };
 
   const title = composer.isEditing
@@ -151,6 +202,18 @@ export function ComposerPage({ seedKind, editingId }: ComposerPageProps) {
           computing={pad.isComputing}
           onClick={() => setPadOpen(true)}
         />
+
+        {!isTransfer && <ComposerAiBar groupId={draft.groupId} memo={draft.memo} onResult={applyAiResult} />}
+
+        {aiNotice && (
+          <div className={`${styles.aiNotice} ${aiNotice.warn ? styles.aiNoticeWarn : ''}`} role="status">
+            <Sparkles size={14} aria-hidden="true" />
+            <span className={styles.aiNoticeText}>{aiNotice.text}</span>
+            <button type="button" className={styles.aiNoticeAction} onClick={revertAi}>
+              {aiNotice.revert ? t.composerAi.revert : t.common.close}
+            </button>
+          </div>
+        )}
 
         <ComposerEndpoints
           left={isIncome ? targetEndpoint : accountEndpoint}

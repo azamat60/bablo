@@ -1,73 +1,24 @@
-import { useRef, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, Mic, Square } from 'lucide-react';
-import { parseVoice } from '@/lib/aiClient';
-import { enqueueAiJob } from '@/db/queries/aiJobs';
 import { useT } from '@/i18n';
+import { useVoiceCapture } from './ai/useVoiceCapture';
 import styles from './CapturePage.module.css';
 
-type Status = 'idle' | 'recording' | 'analyzing' | 'error';
-
+/** Standalone voice entry: records, then hands the draft to the review page. */
 export function VoiceCapturePage() {
   const navigate = useNavigate();
   const t = useT();
-  const [status, setStatus] = useState<Status>('idle');
-  const [error, setError] = useState<string | null>(null);
-  const [seconds, setSeconds] = useState(0);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const voice = useVoiceCapture();
 
-  const startRecording = async () => {
-    setError(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      chunksRef.current = [];
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) chunksRef.current.push(event.data);
-      };
-      recorder.onstop = () => {
-        stream.getTracks().forEach((track) => track.stop());
-        void handleRecordingComplete(new Blob(chunksRef.current, { type: 'audio/webm' }));
-      };
-      recorder.start();
-      recorderRef.current = recorder;
-      setStatus('recording');
-      setSeconds(0);
-      let elapsed = 0;
-      timerRef.current = setInterval(() => {
-        elapsed += 1;
-        setSeconds(elapsed);
-        if (elapsed >= 60) stopRecording();
-      }, 1000);
-    } catch {
-      setError(t.capture.micDenied);
-      setStatus('error');
+  useEffect(() => {
+    if (voice.status === 'done' && voice.result) {
+      void navigate('/add/review', { state: { draft: voice.result.draft, transcript: voice.result.transcript } });
     }
-  };
+  }, [voice.status, voice.result, navigate]);
 
-  const stopRecording = () => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    recorderRef.current?.stop();
-  };
-
-  const handleRecordingComplete = async (blob: Blob) => {
-    setStatus('analyzing');
-    try {
-      const { draft, transcript } = await parseVoice(blob);
-      void navigate('/add/review', { state: { draft, transcript } });
-    } catch (err) {
-      if (!navigator.onLine) {
-        await enqueueAiJob({ kind: 'voice', inputBlob: blob });
-        setStatus('error');
-        setError(t.capture.offlineNotice);
-        return;
-      }
-      setStatus('error');
-      setError(err instanceof Error ? err.message : t.capture.failedVoice);
-    }
-  };
+  const recording = voice.status === 'recording';
+  const notice = voice.status === 'queued' ? t.capture.offlineNotice : voice.error;
 
   return (
     <div className={styles.root}>
@@ -79,24 +30,24 @@ export function VoiceCapturePage() {
         <span className={styles.title}>{t.capture.voiceEntry}</span>
       </div>
       <div className={styles.body}>
-        {status === 'analyzing' && (
+        {voice.status === 'analyzing' && (
           <>
             <div className={styles.spinner} />
             <span className={styles.status}>{t.capture.transcribing}</span>
           </>
         )}
-        {status === 'error' && error && <div className={styles.errorBox}>{error}</div>}
-        {(status === 'idle' || status === 'recording' || status === 'error') && (
+        {notice && <div className={styles.errorBox}>{notice}</div>}
+        {voice.status !== 'analyzing' && (
           <>
             <button
               type="button"
-              className={`${styles.recordButton} ${status === 'recording' ? styles.recordButtonActive : ''}`}
-              onClick={() => (status === 'recording' ? stopRecording() : void startRecording())}
+              className={`${styles.recordButton} ${recording ? styles.recordButtonActive : ''}`}
+              onClick={() => (recording ? voice.stop() : void voice.start())}
             >
-              {status === 'recording' ? <Square size={28} aria-hidden="true" /> : <Mic size={28} aria-hidden="true" />}
+              {recording ? <Square size={28} aria-hidden="true" /> : <Mic size={28} aria-hidden="true" />}
             </button>
             <span className={styles.status}>
-              {status === 'recording' ? t.capture.recording(seconds) : t.capture.tapToRecord}
+              {recording ? t.capture.recording(voice.seconds) : t.capture.tapToRecord}
             </span>
           </>
         )}
