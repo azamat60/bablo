@@ -47,3 +47,9 @@
   align-items: center;
   justify-content: center;
 }
+
+/* Applied to the scroller while a tile is lifted, so the drag does not
+   compete with a native scroll. */
+.content:global(.dragging) {
+  touch-action: none;
+}

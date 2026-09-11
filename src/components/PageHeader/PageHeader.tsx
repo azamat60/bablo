@@ -3,10 +3,10 @@ import { useT } from '@/i18n';
 import type { PageHeaderProps } from './PageHeader.types';
 import styles from './PageHeader.module.css';
 
-export function PageHeader({ title, onBack, action }: PageHeaderProps) {
+export function PageHeader({ title, onBack, action, className }: PageHeaderProps) {
   const t = useT();
   return (
-    <div className={styles.root}>
+    <div className={`${styles.root} ${className ?? ''}`}>
       {onBack && (
         <button type="button" className={styles.back} onClick={onBack} aria-label={t.common.back}>
           <ArrowLeft size={20} aria-hidden="true" />

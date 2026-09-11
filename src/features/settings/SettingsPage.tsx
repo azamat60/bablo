@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { ChevronRight, Tags, Repeat, Package, Coins, Bot, PiggyBank } from 'lucide-react';
+import { ChevronRight, Tags, Repeat, Package, Coins, Bot, PiggyBank, ArrowLeftRight } from 'lucide-react';
 import { useSettings, updateSettings } from '@/db/queries/settings';
 import { useT } from '@/i18n';
 import { setActiveLocale } from '@/i18n/state';
@@ -47,6 +47,11 @@ export function SettingsPage() {
         <Link to="/savings" className={styles.row}>
           <PiggyBank className={styles.rowIcon} size={20} aria-hidden="true" />
           <span className={styles.rowLabel}>{t.settings.savingsGoals}</span>
+          <ChevronRight className={styles.chevron} size={18} aria-hidden="true" />
+        </Link>
+        <Link to="/settings/rates" className={styles.row}>
+          <ArrowLeftRight className={styles.rowIcon} size={20} aria-hidden="true" />
+          <span className={styles.rowLabel}>{t.settings.rates}</span>
           <ChevronRight className={styles.chevron} size={18} aria-hidden="true" />
         </Link>
         <Link to="/settings/import-export" className={styles.row}>

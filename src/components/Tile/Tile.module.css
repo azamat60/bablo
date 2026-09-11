@@ -1,0 +1,116 @@
+.root {
+  width: var(--tile-cell-w);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  text-align: center;
+  /* A long press must not raise the iOS callout menu or select the label. */
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  transition:
+    opacity var(--dur-med) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.label {
+  width: 100%;
+  font-size: var(--tile-label-size);
+  line-height: 1.2;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.circleWrap {
+  position: relative;
+  display: flex;
+}
+
+.circle {
+  width: var(--tile-circle);
+  height: var(--tile-circle);
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--tile-glyph);
+  box-shadow: var(--tile-inner-ring);
+  transition:
+    box-shadow var(--dur-med) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.root:active .circle {
+  transform: scale(0.94);
+}
+
+.lock {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.amount {
+  font-size: var(--tile-amount-size);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.secondary {
+  font-size: var(--tile-budget-size);
+  line-height: 1.2;
+  color: var(--color-text-faint);
+  white-space: nowrap;
+}
+
+/* --- add tile --- */
+.addCircle {
+  background: var(--color-surface-raised);
+  border: 1px dashed var(--color-border);
+  color: var(--color-text-muted);
+  box-shadow: none;
+}
+
+/* --- drag states --- */
+.lifted {
+  opacity: 0.35;
+}
+
+.valid .circle {
+  box-shadow:
+    var(--tile-inner-ring),
+    0 0 0 var(--tile-ring-w) var(--tile-ring-valid);
+}
+
+.invalid {
+  opacity: var(--tile-dim-opacity);
+}
+
+.hover .circle {
+  box-shadow:
+    var(--tile-inner-ring),
+    0 0 0 var(--tile-ring-w) var(--tile-ring-hover);
+  transform: scale(1.08);
+}

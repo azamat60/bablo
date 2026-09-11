@@ -29,6 +29,8 @@ export type CategoryGroup = SyncMeta & {
   kind: CategoryGroupKind;
   bucket?: Bucket;
   color: string;
+  /** Optional: groups predate the tile dashboard. See groupIcon() for the fallback. */
+  icon?: string;
   order: number;
   archived: boolean;
 };

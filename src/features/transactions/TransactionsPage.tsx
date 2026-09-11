@@ -56,7 +56,7 @@ export function TransactionsPage() {
 
   return (
     <div className={styles.root}>
-      <PageHeader title={t.tabs.transactions} />
+      <PageHeader title={t.tabs.transactions} className={styles.header} />
 
       <div className={styles.toolbar}>
         <input

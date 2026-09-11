@@ -33,6 +33,7 @@ export function CategoryDonut({ slices, currency }: CategoryDonutProps) {
               nameKey="name"
               innerRadius={36}
               outerRadius={58}
+              stroke="var(--color-surface)"
               strokeWidth={2}
               isAnimationActive={false}
             >

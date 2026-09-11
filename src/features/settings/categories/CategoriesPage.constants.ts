@@ -14,14 +14,19 @@ export const BUCKET_LABEL_KEY: Record<Bucket, 'bucketNeeds' | 'bucketWants' | 'b
 
 export const GROUP_KIND_OPTIONS: readonly { value: CategoryGroupKind }[] = [{ value: 'expense' }, { value: 'income' }];
 
+/**
+ * Tuned so a white glyph stays legible on every swatch, which is how tiles
+ * render them. Existing groups keep whatever colour they were saved with;
+ * this list only affects new picks.
+ */
 export const GROUP_COLOR_OPTIONS: readonly string[] = [
-  '#4f8dfd',
-  '#2fbf71',
-  '#f5a623',
-  '#ef5f6d',
-  '#d88fd8',
-  '#5aa9e6',
-  '#45c4b0',
-  '#f2994a',
-  '#8b98a9',
+  '#3d8bfd',
+  '#2fc48d',
+  '#f5a83a',
+  '#f2545f',
+  '#a06cf0',
+  '#2bb8c4',
+  '#ee5f9a',
+  '#f57c3a',
+  '#6d778a',
 ];

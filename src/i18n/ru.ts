@@ -29,6 +29,16 @@ export const ru: Dictionary = {
     expense: 'Расход',
     income: 'Доход',
   },
+  dashboard: {
+    income: 'Доходы',
+    accounts: 'Счета',
+    expenses: 'Расходы',
+    addGroup: 'Добавить',
+    addAccount: 'Новый счёт',
+    ofBudget: (assigned: string) => `из ${assigned}`,
+    mixedCurrencies: 'Разные валюты',
+  },
+
   tabs: {
     home: 'Главная',
     accounts: 'Счета',
@@ -141,6 +151,37 @@ export const ru: Dictionary = {
     reasonNoCategory: 'Выберите категорию',
     reasonNoAmount: 'Введите сумму',
   },
+  composer: {
+    amount: 'Сумма',
+    subcategory: 'Подкатегория',
+    comment: 'Комментарий',
+    commentPlaceholder: 'Необязательно',
+    addSubcategory: 'Добавить',
+    closeKey: 'Готово',
+    titleTransfer: 'Перевод',
+    reasonNoAccount: 'Выберите счёт',
+    reasonSameAccount: 'Выберите разные счета',
+    reasonNoGroup: 'Выберите категорию',
+    splits: 'Разделить по категориям',
+  },
+
+  suggest: {
+    payeeDefault: (name: string) => `Обычно: ${name}`,
+    recurring: (name: string) => `Регулярно: ${name}`,
+    onlyCategory: (name: string) => name,
+    repeatAmount: (name: string) => `Как обычно: ${name}`,
+    typicalAmount: (name: string) => `Обычно: ${name}`,
+    frequent: (name: string) => `Чаще всего: ${name}`,
+    dismiss: 'Скрыть подсказку',
+  },
+
+  rates: {
+    hint: (base: string) =>
+      `Курсы обновляются автоматически раз в сутки и сохраняются для работы офлайн. Значения указаны в ${base} за одну единицу валюты — можно исправить вручную.`,
+    empty: 'Все счета в основной валюте — курсы не нужны.',
+    updated: (when: string) => `Обновлено: ${when}`,
+  },
+
   transfer: {
     back: 'Назад',
     title: 'Перевод',
@@ -304,6 +345,7 @@ export const ru: Dictionary = {
     categories: 'Категории',
     recurring: 'Регулярные операции',
     savingsGoals: 'Цели накоплений',
+    rates: 'Курсы валют',
     importExport: 'Импорт и экспорт',
     appearance: 'Оформление',
     general: 'Общее',

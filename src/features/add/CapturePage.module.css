@@ -133,7 +133,7 @@
   height: 120px;
   border-radius: var(--radius-pill);
   background: var(--color-expense);
-  color: #fff;
+  color: var(--tile-glyph);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -1,16 +1,10 @@
-import { NavLink, useLocation } from 'react-router';
+import { NavLink } from 'react-router';
 import type { LucideIcon } from 'lucide-react';
-import { Fab } from '@/components/Fab';
 import { useT } from '@/i18n';
 import { TABS } from './TabBar.constants';
 import styles from './TabBar.module.css';
 
-type TabBarProps = {
-  showFab?: boolean;
-};
-
-export function TabBar({ showFab = true }: TabBarProps) {
-  const location = useLocation();
+export function TabBar() {
   const t = useT();
 
   return (
@@ -18,7 +12,6 @@ export function TabBar({ showFab = true }: TabBarProps) {
       {TABS.map((tab) => (
         <TabLink key={tab.to} to={tab.to} label={t.tabs[tab.labelKey]} icon={tab.icon} />
       ))}
-      {showFab && <Fab key={location.pathname} />}
     </nav>
   );
 }
