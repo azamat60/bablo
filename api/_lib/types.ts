@@ -10,6 +10,12 @@ export type AiRequestContext = {
   baseCurrency: string;
   timezone: string;
   today: string;
+  /**
+   * Set when the user is already inside a category on the client. The model
+   * is asked to prefer these but may still pick any listed category.
+   */
+  preferredCategoryIds?: string[];
+  preferredGroupName?: string;
 };
 
 export type AiDraftTransaction = {

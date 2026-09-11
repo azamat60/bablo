@@ -1,42 +1,23 @@
-import { useRef, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, Camera, Image } from 'lucide-react';
-import { downscaleImageToDataUrl } from '@/domain/image';
-import { parseReceipt } from '@/lib/aiClient';
-import { enqueueAiJob } from '@/db/queries/aiJobs';
 import { useT } from '@/i18n';
+import { usePhotoCapture } from './ai/usePhotoCapture';
 import styles from './CapturePage.module.css';
 
-type Status = 'idle' | 'analyzing' | 'error';
-
+/** Standalone receipt scan: picks an image, then hands the draft to the review page. */
 export function PhotoCapturePage() {
   const navigate = useNavigate();
   const t = useT();
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const galleryInputRef = useRef<HTMLInputElement>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [status, setStatus] = useState<Status>('idle');
-  const [error, setError] = useState<string | null>(null);
+  const photo = usePhotoCapture();
 
-  const handleFile = async (file: File) => {
-    setStatus('analyzing');
-    setError(null);
-    const imageDataUrl = await downscaleImageToDataUrl(file);
-    setPreview(imageDataUrl);
-    try {
-      const draft = await parseReceipt(imageDataUrl);
-      void navigate('/add/review', { state: { draft } });
-    } catch (err) {
-      if (!navigator.onLine) {
-        await enqueueAiJob({ kind: 'receipt', inputText: imageDataUrl });
-        setStatus('error');
-        setError(t.capture.offlineNotice);
-        return;
-      }
-      setStatus('error');
-      setError(err instanceof Error ? err.message : t.capture.failedReceipt);
+  useEffect(() => {
+    if (photo.status === 'done' && photo.result) {
+      void navigate('/add/review', { state: { draft: photo.result.draft } });
     }
-  };
+  }, [photo.status, photo.result, navigate]);
+
+  const notice = photo.status === 'queued' ? t.capture.offlineNotice : photo.error;
 
   return (
     <div className={styles.root}>
@@ -48,48 +29,29 @@ export function PhotoCapturePage() {
         <span className={styles.title}>{t.capture.scanReceipt}</span>
       </div>
       <div className={styles.body}>
-        {preview && <img className={styles.preview} src={preview} alt={t.capture.receiptAlt} />}
-        {status === 'analyzing' && (
+        {photo.preview && <img className={styles.preview} src={photo.preview} alt={t.capture.receiptAlt} />}
+        {photo.status === 'analyzing' && (
           <>
             <div className={styles.spinner} />
             <span className={styles.status}>{t.capture.readingReceipt}</span>
           </>
         )}
-        {status === 'error' && error && <div className={styles.errorBox}>{error}</div>}
-        {status !== 'analyzing' && (
+        {notice && <div className={styles.errorBox}>{notice}</div>}
+        {photo.status !== 'analyzing' && (
           <>
-            <button type="button" className={styles.actionButton} onClick={() => cameraInputRef.current?.click()}>
+            <button type="button" className={styles.actionButton} onClick={photo.openCamera}>
               <Camera className={styles.actionIcon} size={20} aria-hidden="true" />
               <span className={styles.actionLabel}>{t.capture.takePhoto}</span>
             </button>
-            <button type="button" className={styles.actionButton} onClick={() => galleryInputRef.current?.click()}>
+            <button type="button" className={styles.actionButton} onClick={photo.openGallery}>
               <Image className={styles.actionIcon} size={20} aria-hidden="true" />
               <span className={styles.actionLabel}>{t.capture.chooseFromGallery}</span>
             </button>
           </>
         )}
       </div>
-      <input
-        ref={cameraInputRef}
-        className={styles.hiddenInput}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) void handleFile(file);
-        }}
-      />
-      <input
-        ref={galleryInputRef}
-        className={styles.hiddenInput}
-        type="file"
-        accept="image/*"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) void handleFile(file);
-        }}
-      />
+      <input className={styles.hiddenInput} type="file" accept="image/*" capture="environment" {...photo.cameraInput} />
+      <input className={styles.hiddenInput} type="file" accept="image/*" {...photo.galleryInput} />
     </div>
   );
 }

@@ -1,36 +1,25 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
-import { parseText } from '@/lib/aiClient';
-import { enqueueAiJob } from '@/db/queries/aiJobs';
 import { useT } from '@/i18n';
+import { useTextAi } from './ai/useTextAi';
 import styles from './CapturePage.module.css';
 
+/** Standalone free-text entry: parses a sentence, then hands the draft to the review page. */
 export function TextAiPage() {
   const navigate = useNavigate();
   const t = useT();
   const [text, setText] = useState('');
-  const [status, setStatus] = useState<'idle' | 'analyzing' | 'error'>('idle');
-  const [error, setError] = useState<string | null>(null);
+  const ai = useTextAi();
 
-  const handleParse = async () => {
-    if (!text.trim()) return;
-    setStatus('analyzing');
-    setError(null);
-    try {
-      const draft = await parseText(text.trim());
-      void navigate('/add/review', { state: { draft } });
-    } catch (err) {
-      if (!navigator.onLine) {
-        await enqueueAiJob({ kind: 'text', inputText: text.trim() });
-        setStatus('error');
-        setError(t.capture.offlineNotice);
-        return;
-      }
-      setStatus('error');
-      setError(err instanceof Error ? err.message : t.capture.failedText);
+  useEffect(() => {
+    if (ai.status === 'done' && ai.result) {
+      void navigate('/add/review', { state: { draft: ai.result.draft } });
     }
-  };
+  }, [ai.status, ai.result, navigate]);
+
+  const analyzing = ai.status === 'analyzing';
+  const notice = ai.status === 'queued' ? t.capture.offlineNotice : ai.error;
 
   return (
     <div className={styles.root}>
@@ -47,21 +36,21 @@ export function TextAiPage() {
           placeholder={t.capture.textPlaceholder}
           value={text}
           onChange={(event) => setText(event.target.value)}
-          disabled={status === 'analyzing'}
+          disabled={analyzing}
         />
-        {status === 'analyzing' && (
+        {analyzing && (
           <>
             <div className={styles.spinner} />
             <span className={styles.status}>{t.capture.thinking}</span>
           </>
         )}
-        {status === 'error' && error && <div className={styles.errorBox}>{error}</div>}
+        {notice && <div className={styles.errorBox}>{notice}</div>}
         <button
           type="button"
           className={styles.primaryButton}
           style={{ maxWidth: 320, width: '100%', flex: 'none' }}
-          disabled={!text.trim() || status === 'analyzing'}
-          onClick={() => void handleParse()}
+          disabled={!text.trim() || analyzing}
+          onClick={() => void ai.submitText(text)}
         >
           {t.capture.parseWithAi}
         </button>

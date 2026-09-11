@@ -122,6 +122,7 @@ export type NewTransactionInput = {
   memo?: string;
   splits?: TransactionSplit[];
   source?: TransactionSource;
+  aiConfidence?: number;
 };
 
 export async function createTransaction(input: NewTransactionInput): Promise<string> {
@@ -143,6 +144,7 @@ export async function createTransaction(input: NewTransactionInput): Promise<str
     tags: [],
     attachmentIds: [],
     source: input.source ?? 'manual',
+    aiConfidence: input.aiConfidence,
   };
   await db.transactions.add(transaction);
   return transaction.id;

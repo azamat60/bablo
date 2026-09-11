@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { todayIsoDate } from '@/domain/transactions';
 import type { SplitRow } from '@/features/add/splits.types';
+import type { TransactionSource } from '@/db/types';
 
 export type TxDraftKind = 'expense' | 'income' | 'transfer';
 
@@ -22,6 +23,9 @@ export type TxDraft = {
   editingId?: string;
   /** Non-empty means the amount is divided across categories. */
   splits?: SplitRow[];
+  /** How the figures got here; stays 'manual' unless AI filled them. */
+  source?: TransactionSource;
+  aiConfidence?: number;
 };
 
 function emptyDraft(kind: TxDraftKind = 'expense'): TxDraft {

@@ -209,6 +209,24 @@ export const ru: Dictionary = {
     removeAria: 'Убрать подкатегорию',
   },
 
+  composerAi: {
+    voice: 'Голосом',
+    receipt: 'Чек',
+    text: 'Текстом',
+    stop: 'Стоп',
+    takePhoto: 'Сделать фото',
+    fromGallery: 'Из галереи',
+    parse: 'Разобрать',
+    retry: 'Повторить',
+    remove: 'Убрать',
+    categoryChanged: (name: string) => `ИИ выбрал категорию: ${name}`,
+    lowConfidence: 'ИИ не уверен — проверьте',
+    extraIgnored: (n: number) => `Пропущено операций другого типа: ${n}`,
+    revert: 'Вернуть',
+    nothingFound: 'ИИ не нашёл операцию в этом вводе',
+    parseMemo: 'Разобрать комментарий через ИИ',
+  },
+
   transfer: {
     back: 'Назад',
     title: 'Перевод',

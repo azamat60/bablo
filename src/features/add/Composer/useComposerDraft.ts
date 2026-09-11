@@ -157,6 +157,8 @@ export function useComposerDraft(seedKind?: TxDraftKind, editingId?: string) {
       // A split transaction carries its categories in `splits`, not here.
       categoryId: splitMode ? undefined : resolvedCategoryId,
       memo: draft.memo.trim() || undefined,
+      source: draft.source,
+      aiConfidence: draft.aiConfidence,
       splits: splitMode
         ? draft.splits!.map((row) => ({ categoryId: row.categoryId!, amount: sign * toMinorUnits(row.amountText) }))
         : undefined,
