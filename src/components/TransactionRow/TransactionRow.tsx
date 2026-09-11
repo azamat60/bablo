@@ -12,6 +12,15 @@ type TransactionRowProps = {
   onClick?: () => void;
 };
 
+/**
+ * "Food / Groceries" — the group gives an unfamiliar subcategory its context,
+ * which matters now that a group is what the dashboard shows.
+ */
+function categoryPath(groupName?: string, categoryName?: string): string | undefined {
+  if (!categoryName) return undefined;
+  return groupName && groupName !== categoryName ? `${groupName} / ${categoryName}` : categoryName;
+}
+
 export function TransactionRow({ transaction, showAccount, onClick }: TransactionRowProps) {
   const t = useT();
   const category = useLiveQuery(
@@ -19,6 +28,10 @@ export function TransactionRow({ transaction, showAccount, onClick }: Transactio
     [transaction.categoryId],
   );
   const account = useLiveQuery(() => db.accounts.get(transaction.accountId), [transaction.accountId]);
+  const group = useLiveQuery(
+    () => (category?.groupId ? db.categoryGroups.get(category.groupId) : undefined),
+    [category?.groupId],
+  );
   const payee = useLiveQuery(
     () => (transaction.payeeId ? db.payees.get(transaction.payeeId) : undefined),
     [transaction.payeeId],
@@ -26,14 +39,14 @@ export function TransactionRow({ transaction, showAccount, onClick }: Transactio
 
   const isTransfer = Boolean(transaction.transferId);
   const isSplit = Boolean(transaction.splits && transaction.splits.length > 0);
-  const icon = isTransfer ? 'repeat' : isSplit ? 'split' : (category?.icon ?? 'help-circle');
+  const icon = isTransfer ? 'repeat' : isSplit ? 'split' : (category?.icon ?? group?.icon ?? 'help-circle');
   const title = isTransfer
     ? transaction.amount < 0
       ? t.transactionRow.transferOut
       : t.transactionRow.transferIn
     : isSplit
       ? t.transactionRow.splitCount(transaction.splits?.length ?? 0)
-      : (payee?.name ?? category?.name ?? t.transactionRow.uncategorized);
+      : (payee?.name ?? categoryPath(group?.name, category?.name) ?? t.transactionRow.uncategorized);
   const subtitle = [showAccount ? account?.name : null, transaction.memo].filter(Boolean).join(' · ');
 
   const amountClass = transaction.amount < 0 ? styles.expense : styles.income;

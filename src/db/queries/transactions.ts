@@ -2,6 +2,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '@/db/db';
 import { newMeta, touchMeta } from '@/db/meta';
+import { currentRate } from './rates';
+import { buildRateTable, toBase } from '@/domain/rates';
 import type { Transaction, TransactionSource, TransactionSplit } from '@/db/types';
 
 export type TransactionFilter = {
@@ -16,6 +18,21 @@ export function useTransactions(filter: TransactionFilter = {}): Transaction[] {
         : await db.transactions.toArray();
       return all.filter((tx) => !tx.deleted).sort((a, b) => b.date.localeCompare(a.date) || b.updatedAt - a.updatedAt);
     }, [filter.accountId]) ?? []
+  );
+}
+
+/**
+ * Transactions whose date falls in [from, to], both inclusive, both 'yyyy-MM-dd'.
+ *
+ * Uses the `date` index instead of reading the whole table, which is what
+ * `useTransactions` does. Screens scoped to a period should prefer this.
+ */
+export function useTransactionsInRange(from: string, to: string): Transaction[] {
+  return (
+    useLiveQuery(async () => {
+      const all = await db.transactions.where('date').between(from, to, true, true).toArray();
+      return all.filter((tx) => !tx.deleted).sort((a, b) => b.date.localeCompare(a.date) || b.updatedAt - a.updatedAt);
+    }, [from, to]) ?? []
   );
 }
 
@@ -41,6 +58,40 @@ export function useAccountBalances(): Map<string, number> {
       for (const account of accounts) {
         const sum = activeTxs.filter((tx) => tx.accountId === account.id).reduce((total, tx) => total + tx.amount, 0);
         balances.set(account.id, account.openingBalance + sum);
+      }
+      return balances;
+    }, []) ?? new Map<string, number>()
+  );
+}
+
+/**
+ * Account balances converted into the base currency.
+ *
+ * Kept separate from useAccountBalances, which stays in each account's own
+ * currency: a row shows a native figure, a total must be converted.
+ */
+export function useBalancesInBase(): Map<string, number> {
+  return (
+    useLiveQuery(async () => {
+      const [accounts, txs, settings, rateRows] = await Promise.all([
+        db.accounts.toArray(),
+        db.transactions.toArray(),
+        db.settings.get('singleton'),
+        db.rates.toArray(),
+      ]);
+      const base = settings?.baseCurrency ?? 'USD';
+      const table = buildRateTable(rateRows, base);
+      const activeTxs = txs.filter((tx) => !tx.deleted);
+
+      const balances = new Map<string, number>();
+      for (const account of accounts) {
+        const native = activeTxs
+          .filter((tx) => tx.accountId === account.id)
+          .reduce((total, tx) => total + tx.amount, 0);
+        const converted = toBase(account.openingBalance + native, account.currency, table);
+        // An unconvertible account is omitted rather than counted at parity,
+        // so a total is either right or visibly incomplete.
+        if (converted !== undefined) balances.set(account.id, converted);
       }
       return balances;
     }, []) ?? new Map<string, number>()
@@ -74,13 +125,16 @@ export type NewTransactionInput = {
 };
 
 export async function createTransaction(input: NewTransactionInput): Promise<string> {
+  // Stamped at write time so historical figures are not rewritten when rates
+  // move later.
+  const base = (await db.settings.get('singleton'))?.baseCurrency ?? input.currency;
   const transaction: Transaction = {
     ...newMeta(),
     accountId: input.accountId,
     date: input.date,
     amount: input.amount,
     currency: input.currency,
-    rate: 1,
+    rate: await currentRate(base, input.currency),
     categoryId: input.categoryId,
     payeeId: input.payeeId,
     memo: input.memo,
@@ -107,6 +161,11 @@ export type NewTransferInput = {
 export async function createTransfer(input: NewTransferInput): Promise<void> {
   const transferId = uuidv4();
   const now = Date.now();
+  const base = (await db.settings.get('singleton'))?.baseCurrency ?? input.fromCurrency;
+  const [fromRate, toRate] = await Promise.all([
+    currentRate(base, input.fromCurrency),
+    currentRate(base, input.toCurrency),
+  ]);
   const outgoing: Transaction = {
     id: uuidv4(),
     updatedAt: now,
@@ -116,7 +175,7 @@ export async function createTransfer(input: NewTransferInput): Promise<void> {
     date: input.date,
     amount: -input.amount,
     currency: input.fromCurrency,
-    rate: 1,
+    rate: fromRate,
     memo: input.memo,
     cleared: true,
     transferId,
@@ -133,7 +192,7 @@ export async function createTransfer(input: NewTransferInput): Promise<void> {
     date: input.date,
     amount: input.amount,
     currency: input.toCurrency,
-    rate: 1,
+    rate: toRate,
     memo: input.memo,
     cleared: true,
     transferId,

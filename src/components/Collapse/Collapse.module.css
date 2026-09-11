@@ -1,0 +1,18 @@
+/*
+ * grid-template-rows 0fr -> 1fr animates to the content's natural height
+ * without measuring it in JS.
+ */
+.root {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--dur-med) var(--ease-out);
+}
+
+.open {
+  grid-template-rows: 1fr;
+}
+
+.inner {
+  overflow: hidden;
+  min-height: 0;
+}

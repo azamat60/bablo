@@ -1,0 +1,153 @@
+.iconSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding-bottom: var(--space-4);
+}
+
+.iconLabel,
+.label {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.iconCircle {
+  width: 84px;
+  height: 84px;
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--tile-glyph);
+  box-shadow:
+    var(--tile-inner-ring),
+    0 0 24px -4px currentColor;
+}
+
+.iconGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--space-2);
+  padding: var(--space-2) 0 var(--space-3);
+}
+
+.iconOption {
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.iconOptionActive {
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+.colorRow {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: center;
+  padding-bottom: var(--space-3);
+}
+
+.colorSwatch {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-pill);
+  border: 2px solid transparent;
+}
+
+.colorSwatchActive {
+  border-color: var(--color-text);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-bottom: var(--space-4);
+}
+
+.input {
+  border: none;
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  color: var(--color-text);
+  outline: none;
+}
+
+.subTitle {
+  font-size: 16px;
+  font-weight: 700;
+  padding-bottom: var(--space-2);
+}
+
+.subList {
+  display: flex;
+  flex-direction: column;
+}
+
+.subRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+}
+
+.subInput {
+  flex: 1;
+  border: none;
+  background: none;
+  padding: var(--space-2) var(--space-1);
+  color: var(--color-text);
+  outline: none;
+  border-bottom: 1px solid transparent;
+}
+
+.subInput:focus {
+  border-bottom-color: var(--color-border);
+}
+
+.subRemove {
+  color: var(--color-text-faint);
+  display: flex;
+  padding: var(--space-2);
+}
+
+.addRow {
+  color: var(--color-primary);
+  font-weight: 600;
+  padding: var(--space-2) var(--space-1);
+  text-align: left;
+}
+
+.save {
+  width: 100%;
+  height: 48px;
+  margin-top: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.save:disabled {
+  opacity: 0.4;
+}
+
+.delete {
+  width: 100%;
+  padding: var(--space-3);
+  color: var(--color-expense);
+  font-weight: 600;
+}
+
+.iconGlyph {
+  color: var(--tile-glyph);
+}

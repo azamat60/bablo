@@ -29,6 +29,16 @@ export const ru: Dictionary = {
     expense: 'Расход',
     income: 'Доход',
   },
+  dashboard: {
+    income: 'Доходы',
+    accounts: 'Счета',
+    expenses: 'Расходы',
+    addGroup: 'Добавить',
+    addAccount: 'Новый счёт',
+    ofBudget: (assigned: string) => `из ${assigned}`,
+    mixedCurrencies: 'Разные валюты',
+  },
+
   tabs: {
     home: 'Главная',
     accounts: 'Счета',
@@ -141,6 +151,64 @@ export const ru: Dictionary = {
     reasonNoCategory: 'Выберите категорию',
     reasonNoAmount: 'Введите сумму',
   },
+  composer: {
+    amount: 'Сумма',
+    subcategory: 'Подкатегория',
+    comment: 'Комментарий',
+    commentPlaceholder: 'Необязательно',
+    addSubcategory: 'Добавить',
+    closeKey: 'Готово',
+    titleTransfer: 'Перевод',
+    reasonNoAccount: 'Выберите счёт',
+    reasonSameAccount: 'Выберите разные счета',
+    reasonNoGroup: 'Выберите категорию',
+    splits: 'Разделить по категориям',
+  },
+
+  suggest: {
+    payeeDefault: (name: string) => `Обычно: ${name}`,
+    recurring: (name: string) => `Регулярно: ${name}`,
+    onlyCategory: (name: string) => name,
+    repeatAmount: (name: string) => `Как обычно: ${name}`,
+    typicalAmount: (name: string) => `Обычно: ${name}`,
+    frequent: (name: string) => `Чаще всего: ${name}`,
+    dismiss: 'Скрыть подсказку',
+  },
+
+  rates: {
+    hint: (base: string) =>
+      `Курсы обновляются автоматически раз в сутки и сохраняются для работы офлайн. Значения указаны в ${base} за одну единицу валюты — можно исправить вручную.`,
+    empty: 'Все счета в основной валюте — курсы не нужны.',
+    updated: (when: string) => `Обновлено: ${when}`,
+  },
+
+  groupDetail: {
+    searchPlaceholder: 'Поиск по комментариям',
+    budget: 'Бюджет',
+    expense: 'Расход',
+    income: 'Доход',
+    perDay: '~ в день',
+    change: 'изменить',
+    subcategories: 'Подкатегории',
+    operations: 'Список операций',
+    empty: 'В этом месяце операций нет',
+    addAria: 'Добавить операцию',
+    editAria: 'Редактировать категорию',
+  },
+
+  groupEdit: {
+    title: 'Категория',
+    icon: 'Иконка',
+    name: 'Название',
+    subcategories: 'Подкатегории',
+    subcategoryPlaceholder: 'Название подкатегории',
+    add: 'Добавить',
+    save: 'Сохранить',
+    delete: 'Удалить категорию',
+    deleteConfirm: 'Категория и её подкатегории уйдут в архив. Операции сохранятся.',
+    removeAria: 'Убрать подкатегорию',
+  },
+
   transfer: {
     back: 'Назад',
     title: 'Перевод',
@@ -304,6 +372,7 @@ export const ru: Dictionary = {
     categories: 'Категории',
     recurring: 'Регулярные операции',
     savingsGoals: 'Цели накоплений',
+    rates: 'Курсы валют',
     importExport: 'Импорт и экспорт',
     appearance: 'Оформление',
     general: 'Общее',

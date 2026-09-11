@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Eye, EyeOff, Plus } from 'lucide-react';
 import { useAccounts } from '@/db/queries/accounts';
 import { useSettings } from '@/db/queries/settings';
-import { useAccountBalances } from '@/db/queries/transactions';
+import { useAccountBalances, useBalancesInBase } from '@/db/queries/transactions';
 import { usePrivacyStore } from '@/store/privacy';
 import { groupAccounts, netWorthBreakdown } from '@/domain/accounts';
 import { formatMoney } from '@/domain/money';
@@ -16,15 +16,18 @@ import styles from './AccountsPage.module.css';
 export function AccountsPage() {
   const accounts = useAccounts();
   const settings = useSettings();
+  // Rows show each account in its own currency; every total has to be
+  // converted first, or сом and ₺ get added together.
   const balances = useAccountBalances();
+  const balancesInBase = useBalancesInBase();
   const hideAmounts = usePrivacyStore((s) => s.hideAmounts);
   const toggleHideAmounts = usePrivacyStore((s) => s.toggleHideAmounts);
   const [addOpen, setAddOpen] = useState(false);
   const t = useT();
 
   const currency = settings?.baseCurrency ?? 'USD';
-  const { assets, liabilities, netWorth } = netWorthBreakdown(accounts, balances);
-  const sections = groupAccounts(accounts, balances);
+  const { assets, liabilities, netWorth } = netWorthBreakdown(accounts, balancesInBase);
+  const sections = groupAccounts(accounts, balancesInBase);
 
   return (
     <div className={styles.root}>

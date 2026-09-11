@@ -1,0 +1,40 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  text-align: left;
+  width: 100%;
+}
+
+.icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.iconAi {
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+.label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+}

@@ -117,3 +117,8 @@
   border-radius: var(--radius-md);
   overflow: hidden;
 }
+
+/* The page root has no horizontal padding — every section supplies its own. */
+.header {
+  padding: 0 var(--space-4);
+}

@@ -310,7 +310,7 @@ function defaultSettings(): Settings {
     id: 'singleton',
     baseCurrency: 'USD',
     firstDayOfMonth: 1,
-    theme: 'light',
+    theme: 'dark',
     aiModel: 'gpt-5.6-luna',
     onboardingComplete: false,
     flags: {},

@@ -1,0 +1,11 @@
+/*
+ * auto-fill + minmax keeps the columns evenly distributed at any width instead
+ * of leaving a ragged gutter on the right the way flex-wrap does.
+ */
+.root {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--tile-cell-w), 1fr));
+  gap: var(--tile-gap-y) var(--tile-gap-x);
+  padding: var(--space-3) var(--space-1) var(--space-4);
+  justify-items: center;
+}

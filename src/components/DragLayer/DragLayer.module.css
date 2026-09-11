@@ -1,0 +1,18 @@
+.ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: var(--tile-circle);
+  height: var(--tile-circle);
+  margin-left: calc(var(--tile-circle) / -2);
+  margin-top: calc(var(--tile-circle) / -2);
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--tile-glyph);
+  box-shadow: var(--tile-inner-ring), var(--shadow-drag);
+  pointer-events: none;
+  z-index: var(--z-drag-ghost);
+  will-change: transform;
+}

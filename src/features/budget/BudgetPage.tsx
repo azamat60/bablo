@@ -7,7 +7,7 @@ import { useBudgets } from '@/db/queries/budgets';
 import { useTransactions } from '@/db/queries/transactions';
 import { useSettings } from '@/db/queries/settings';
 import { useBudgetMonthStore } from '@/store/budgetMonth';
-import { monthLabel, readyToAssign, shiftMonth, summarizeCategory } from '@/domain/budget';
+import { buildMonthBudgetIndex, monthLabel, readyToAssign, shiftMonth, summarizeGroup } from '@/domain/budget';
 import { formatMoney } from '@/domain/money';
 import { Card } from '@/components/Card';
 import { PageHeader } from '@/components/PageHeader';
@@ -38,19 +38,27 @@ export function BudgetPage() {
   const [expandedIds, setExpandedIds] = useState<Set<string> | null>(null);
 
   const currency = settings?.baseCurrency ?? 'USD';
-  const expenseGroups = allGroups.filter((group) => group.kind === 'expense');
+  const expenseGroups = useMemo(() => allGroups.filter((group) => group.kind === 'expense'), [allGroups]);
   const allCategories = allGroups.flatMap((group) => group.categories);
   const toBeAssigned = readyToAssign(accounts, allGroups, allCategories, budgets, transactions, month);
+
+  const budgetIndex = useMemo(
+    () => buildMonthBudgetIndex(budgets, transactions, month),
+    [budgets, transactions, month],
+  );
 
   const groupVms: GroupVm[] = useMemo(
     () =>
       expenseGroups.map((group) => {
-        const summaries = group.categories.map((category) => summarizeCategory(category, budgets, transactions, month));
-        const groupAvailable = summaries.reduce((sum, s) => sum + s.available, 0);
-        const hasData = summaries.some((s) => s.assigned !== 0 || s.activity !== 0);
-        return { group, summaries, groupAvailable, hasData };
+        const rollup = summarizeGroup(budgetIndex, group.categories);
+        return {
+          group,
+          summaries: rollup.categories,
+          groupAvailable: rollup.available,
+          hasData: rollup.hasData,
+        };
       }),
-    [expenseGroups, budgets, transactions, month],
+    [expenseGroups, budgetIndex],
   );
 
   const defaultExpanded = useMemo(

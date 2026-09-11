@@ -26,6 +26,16 @@ export const en = {
     expense: 'Expense',
     income: 'Income',
   },
+  dashboard: {
+    income: 'Income',
+    accounts: 'Accounts',
+    expenses: 'Expenses',
+    addGroup: 'Add',
+    addAccount: 'New account',
+    ofBudget: (assigned: string) => `of ${assigned}`,
+    mixedCurrencies: 'Mixed currencies',
+  },
+
   tabs: {
     home: 'Home',
     accounts: 'Accounts',
@@ -138,6 +148,64 @@ export const en = {
     reasonNoCategory: 'Choose a category',
     reasonNoAmount: 'Enter an amount',
   },
+  composer: {
+    amount: 'Amount',
+    subcategory: 'Subcategory',
+    comment: 'Comment',
+    commentPlaceholder: 'Optional',
+    addSubcategory: 'Add',
+    closeKey: 'Done',
+    titleTransfer: 'Transfer',
+    reasonNoAccount: 'Choose an account',
+    reasonSameAccount: 'Choose two different accounts',
+    reasonNoGroup: 'Choose a category',
+    splits: 'Split across categories',
+  },
+
+  suggest: {
+    payeeDefault: (name: string) => `Usually: ${name}`,
+    recurring: (name: string) => `Recurring: ${name}`,
+    onlyCategory: (name: string) => name,
+    repeatAmount: (name: string) => `Same as usual: ${name}`,
+    typicalAmount: (name: string) => `Usually: ${name}`,
+    frequent: (name: string) => `Most often: ${name}`,
+    dismiss: 'Dismiss suggestion',
+  },
+
+  rates: {
+    hint: (base: string) =>
+      `Rates refresh once a day and are cached for offline use. Values are in ${base} per one unit of the currency, and can be corrected by hand.`,
+    empty: 'Every account is in the base currency, so no rates are needed.',
+    updated: (when: string) => `Updated: ${when}`,
+  },
+
+  groupDetail: {
+    searchPlaceholder: 'Search by comments',
+    budget: 'Budget',
+    expense: 'Expense',
+    income: 'Income',
+    perDay: '~ a day',
+    change: 'change',
+    subcategories: 'Subcategories',
+    operations: 'List of operations',
+    empty: 'No operations this month',
+    addAria: 'Add transaction',
+    editAria: 'Edit category',
+  },
+
+  groupEdit: {
+    title: 'Category',
+    icon: 'Icon',
+    name: 'Title',
+    subcategories: 'Subcategories',
+    subcategoryPlaceholder: 'Subcategory name',
+    add: 'Add',
+    save: 'Save',
+    delete: 'Delete category',
+    deleteConfirm: 'The category and its subcategories will be archived. Transactions are kept.',
+    removeAria: 'Remove subcategory',
+  },
+
   transfer: {
     back: 'Back',
     title: 'Transfer',
@@ -301,6 +369,7 @@ export const en = {
     categories: 'Categories',
     recurring: 'Recurring',
     savingsGoals: 'Savings goals',
+    rates: 'Exchange rates',
     importExport: 'Import & export',
     appearance: 'Appearance',
     general: 'General',

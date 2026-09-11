@@ -36,6 +36,13 @@ export function formatMoney(minorUnits: number, currency: string, locale = activ
   return PREFIX_CURRENCIES.has(currency) ? `${symbol}${number}` : `${number} ${symbol}`;
 }
 
+/** Whole units only — for tight stat tiles where ",00" is noise. */
+export function formatMoneyWhole(minorUnits: number, currency: string, locale = activeIntlLocale()): string {
+  const number = formatNumber(Math.round(minorUnits / 100), locale, { maximumFractionDigits: 0 });
+  const symbol = currencySymbol(currency);
+  return PREFIX_CURRENCIES.has(currency) ? `${symbol}${number}` : `${number} ${symbol}`;
+}
+
 export function formatMoneyCompact(minorUnits: number, currency: string, locale = activeIntlLocale()): string {
   const value = minorUnits / 100;
   const number = formatNumber(value, locale, { notation: 'compact', maximumFractionDigits: 1 });

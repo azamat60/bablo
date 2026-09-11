@@ -14,7 +14,7 @@ export function NetWorthChart({ points, currency }: NetWorthChartProps) {
   return (
     <div style={{ width: '100%', height: 160 }}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+        <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <XAxis
             dataKey="label"
             tick={{ fontSize: 11, fill: 'var(--color-text-faint)' }}
@@ -22,7 +22,7 @@ export function NetWorthChart({ points, currency }: NetWorthChartProps) {
             tickLine={false}
           />
           <YAxis
-            width={42}
+            width={56}
             domain={['dataMin', 'dataMax']}
             tick={{ fontSize: 10, fill: 'var(--color-text-faint)' }}
             tickFormatter={(value) => formatNumberCompact(Number(value))}

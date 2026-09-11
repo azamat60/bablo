@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import type { ThemePref } from '@/db/types';
 
-const THEME_COLOR = { light: '#fdf6e9', dark: '#0b0f14' } as const;
+// Must track --color-bg in tokens.css, plus the manifest colors in vite.config.ts.
+const THEME_COLOR = { light: '#fdf6e9', dark: '#08090c' } as const;
 
 export function useThemeSync(theme: ThemePref | undefined): void {
   useEffect(() => {

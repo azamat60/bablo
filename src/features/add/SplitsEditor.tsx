@@ -8,7 +8,7 @@ import { CategoryPickerSheet } from '@/components/CategoryPickerSheet';
 import { toMinorUnits, formatMoney } from '@/domain/money';
 import { useT } from '@/i18n';
 import type { CategoryGroupKind } from '@/db/types';
-import type { SplitRow } from './TransactionForm.types';
+import type { SplitRow } from './splits.types';
 import styles from './SplitsEditor.module.css';
 
 type SplitsEditorProps = {
