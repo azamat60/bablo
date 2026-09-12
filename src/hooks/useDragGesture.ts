@@ -5,7 +5,7 @@ import { allTargetMeta, hitTest, snapshotTargets, type TargetSnapshot } from '@/
 import { resolveDrop, validTargetIds, type DragItem, type DropOutcome } from '@/domain/dragRules';
 
 /** How long a press must be held before the tile lifts. */
-const LONG_PRESS_MS = 320;
+const LONG_PRESS_MS = 150;
 /** Movement past this before the timer fires means the user is scrolling. */
 const CANCEL_SLOP_PX = 10;
 
