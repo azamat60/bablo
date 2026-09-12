@@ -1,7 +1,7 @@
-import { getOpenAIClient, jsonError, MissingApiKeyError } from '../_lib/openai';
-import { AI_MODELS } from '../_lib/models';
-import { parseStatement, STATEMENT_MAX_BYTES } from '../_lib/statement';
-import type { AiRequestContext } from '../_lib/types';
+import { getOpenAIClient, jsonError, MissingApiKeyError } from '../_lib/openai.js';
+import { AI_MODELS } from '../_lib/models.js';
+import { parseStatement, STATEMENT_MAX_BYTES } from '../_lib/statement.js';
+import type { AiRequestContext } from '../_lib/types.js';
 
 // Long statements take well over the default function timeout.
 export const maxDuration = 120;

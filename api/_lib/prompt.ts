@@ -1,4 +1,4 @@
-import type { AiRequestContext } from './types';
+import type { AiRequestContext } from './types.js';
 
 export function buildSystemPrompt(context: AiRequestContext): string {
   const categoryList = context.categories.map((c) => `- ${c.id}: ${c.name} (${c.kind})`).join('\n');

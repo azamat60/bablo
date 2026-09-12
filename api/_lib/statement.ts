@@ -1,5 +1,5 @@
 import type OpenAI from 'openai';
-import type { AiCategoryContext, AiRequestContext, AiStatement } from './types';
+import type { AiCategoryContext, AiRequestContext, AiStatement } from './types.js';
 
 export const STATEMENT_MAX_BYTES = 4 * 1024 * 1024;
 

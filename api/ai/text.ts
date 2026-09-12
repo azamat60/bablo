@@ -1,7 +1,7 @@
-import { getOpenAIClient, jsonError, MissingApiKeyError } from '../_lib/openai';
-import { AI_MODELS } from '../_lib/models';
-import { parseToDraft } from '../_lib/parse';
-import type { AiRequestContext } from '../_lib/types';
+import { getOpenAIClient, jsonError, MissingApiKeyError } from '../_lib/openai.js';
+import { AI_MODELS } from '../_lib/models.js';
+import { parseToDraft } from '../_lib/parse.js';
+import type { AiRequestContext } from '../_lib/types.js';
 
 type TextRequestBody = {
   text: string;

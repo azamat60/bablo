@@ -1,7 +1,7 @@
 import type OpenAI from 'openai';
-import { buildSystemPrompt } from './prompt';
-import { buildDraftSchema } from './schema';
-import type { AiDraft, AiRequestContext } from './types';
+import { buildSystemPrompt } from './prompt.js';
+import { buildDraftSchema } from './schema.js';
+import type { AiDraft, AiRequestContext } from './types.js';
 
 type ParseInput = {
   client: OpenAI;

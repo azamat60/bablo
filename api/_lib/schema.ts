@@ -1,4 +1,4 @@
-import type { AiCategoryContext } from './types';
+import type { AiCategoryContext } from './types.js';
 
 export function buildDraftSchema(categories: AiCategoryContext[]) {
   const categoryIds = categories.map((c) => c.id);

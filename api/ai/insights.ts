@@ -1,5 +1,5 @@
-import { getOpenAIClient, jsonError, MissingApiKeyError } from '../_lib/openai';
-import { AI_MODELS } from '../_lib/models';
+import { getOpenAIClient, jsonError, MissingApiKeyError } from '../_lib/openai.js';
+import { AI_MODELS } from '../_lib/models.js';
 
 type InsightsRequestBody = {
   month: string;
