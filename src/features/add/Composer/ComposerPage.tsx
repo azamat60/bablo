@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Sparkles, Split, X } from 'lucide-react';
 import { NumberPad } from '@/components/NumberPad';
@@ -9,14 +9,15 @@ import { DateChips } from '@/components/DateChips';
 import { AccountPickerSheet } from '@/components/AccountPickerSheet';
 import { GroupPickerSheet } from '@/components/GroupPickerSheet';
 import { AppIcon } from '@/components/AppIcon';
+import { deleteTransaction, restoreTransaction } from '@/db/queries/transactions';
 import { useAccountBalances } from '@/db/queries/transactions';
 import { useNumberPad } from '@/hooks/useNumberPad';
-import { formatMoney } from '@/domain/money';
+import { decimalFromMinor, formatMoney } from '@/domain/money';
 import { CURRENCY_SYMBOL } from '@/domain/money.constants';
 import { groupIcon } from '@/domain/groups';
 import { useT } from '@/i18n';
-import type { TxDraftKind } from '@/store/txDraft';
-import { useComposerDraft } from './useComposerDraft';
+import { useTxDraftStore, type TxDraftKind } from '@/store/txDraft';
+import { useComposerDraft, useComposerHydration } from './useComposerDraft';
 import { ComposerEndpoints } from './ComposerEndpoints';
 import { SplitsEditor } from '../SplitsEditor';
 import { SuggestionChip } from '@/components/SuggestionChip';
@@ -35,16 +36,64 @@ export type ComposerPageProps = {
 };
 
 const ADD_CHIP_ID = '__add__';
+const NEW_DRAFT_KEY = '__new__';
 
 export function ComposerPage({ seedKind, editingId }: ComposerPageProps) {
+  const navigate = useNavigate();
+  const clear = useTxDraftStore((s) => s.clear);
+  const ready = useComposerHydration(seedKind, editingId);
+  const leavingRef = useRef(false);
+
+  // The draft is cleared only once the page is gone. Clearing while still
+  // mounted would re-run hydration and refill the store with the transaction
+  // being closed, and a picker round trip must keep the draft anyway.
+  useEffect(
+    () => () => {
+      if (leavingRef.current) clear();
+    },
+    [clear],
+  );
+
+  const leave = () => {
+    leavingRef.current = true;
+    void navigate(-1);
+  };
+
+  if (!ready) return <div className={styles.root} />;
+  return <ComposerForm key={editingId ?? NEW_DRAFT_KEY} onLeave={leave} />;
+}
+
+function ComposerForm({ onLeave }: { onLeave: () => void }) {
   const t = useT();
   const navigate = useNavigate();
   const balances = useAccountBalances();
-  const composer = useComposerDraft(seedKind, editingId);
-  const { draft, patch, clear, account, toAccount, group, subcategories, categoryId, currency, validation } = composer;
+  const composer = useComposerDraft();
+  const { draft, patch, account, toAccount, group, subcategories, categoryId, currency, validation } = composer;
   const { splitMode, splits, setSplits, minorUnits } = composer;
 
-  const pad = useNumberPad(Number(draft.amountText) || 0);
+  const pad = useNumberPad(draft.amountText);
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleted, setDeleted] = useState(false);
+  const changeDeletion = async (undo: boolean) => {
+    if (!draft.editingId || savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      if (undo) await restoreTransaction(draft.editingId);
+      else await deleteTransaction(draft.editingId);
+      setDeleted(!undo);
+      setConfirmDelete(false);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Ошибка удаления.');
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  };
   const [accountPicker, setAccountPicker] = useState<'from' | 'to' | null>(null);
   const [groupPicker, setGroupPicker] = useState(false);
   const [padOpen, setPadOpen] = useState(true);
@@ -61,8 +110,8 @@ export function ComposerPage({ seedKind, editingId }: ComposerPageProps) {
   // One-way sync: the calculator owns its own runningTotal/pendingOp, the
   // draft only mirrors the resulting text so it survives navigation.
   useEffect(() => {
-    patch({ amountText: pad.displayText });
-  }, [pad.displayText, patch]);
+    patch({ amountText: pad.amountText });
+  }, [pad.amountText, patch]);
 
   const isTransfer = draft.kind === 'transfer';
   const isIncome = draft.kind === 'income';
@@ -81,10 +130,14 @@ export function ComposerPage({ seedKind, editingId }: ComposerPageProps) {
   const applySuggestion = () => {
     if (!suggestion) return;
     patch({ categoryId: suggestion.categoryId });
-    if (suggestion.amountMinor !== undefined) pad.reset(suggestion.amountMinor / 100);
+    if (suggestion.amountMinor !== undefined) pad.reset(decimalFromMinor(suggestion.amountMinor));
   };
 
   const applyAiResult = (result: AiParseResult, source: TransactionSource) => {
+    if (result.draft.currency && result.draft.currency !== currency) {
+      setAiNotice({ text: 'Валюта распознавания не совпадает с валютой кошелька.', warn: true });
+      return;
+    }
     const applied = aiDraftToPatch(result.draft, {
       groups,
       kind: draft.kind,
@@ -130,13 +183,19 @@ export function ComposerPage({ seedKind, editingId }: ComposerPageProps) {
         ? t.addTx.titleIncome
         : t.addTx.titleExpense;
 
-  const close = () => {
-    clear();
-    void navigate(-1);
-  };
-
   const handleSave = async () => {
-    if (await composer.save()) void navigate(-1);
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      if (await composer.save()) onLeave();
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Не удалось сохранить.');
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
   };
 
   const accountEndpoint = {
@@ -182,13 +241,14 @@ export function ComposerPage({ seedKind, editingId }: ComposerPageProps) {
           <button
             type="button"
             className={styles.splitToggle}
+            aria-label={t.composer.splits}
             aria-pressed={splitMode}
             onClick={() => setSplits(splitMode ? [] : [{ localId: crypto.randomUUID(), amountText: '' }])}
           >
             <Split size={16} aria-hidden="true" />
           </button>
         )}
-        <button type="button" className={styles.close} onClick={close} aria-label={t.common.close}>
+        <button type="button" className={styles.close} onClick={onLeave} aria-label={t.common.close}>
           <X size={18} aria-hidden="true" />
         </button>
       </div>
@@ -273,11 +333,44 @@ export function ComposerPage({ seedKind, editingId }: ComposerPageProps) {
       </div>
 
       <div className={styles.footer}>
+        {saveError && (
+          <div role="alert" className={styles.reason}>
+            {saveError}
+          </div>
+        )}
         {!validation.canSave && validation.reason && <div className={styles.reason}>{validation.reason}</div>}
-        <button type="button" className={styles.save} disabled={!validation.canSave} onClick={() => void handleSave()}>
+        <button
+          type="button"
+          className={styles.save}
+          disabled={deleted || saving || !validation.canSave}
+          onClick={() => void handleSave()}
+        >
           {t.addTx.save}
         </button>
-        {padOpen && (
+        {draft.editingId &&
+          (deleted ? (
+            <div role="status">
+              Операция удалена.{' '}
+              <button type="button" disabled={saving} onClick={() => void changeDeletion(true)}>
+                Отменить удаление
+              </button>
+            </div>
+          ) : confirmDelete ? (
+            <div role="alert">
+              Удалить операцию{isTransfer ? ' и обе стороны перевода' : ''}?{' '}
+              <button type="button" disabled={saving} onClick={() => void changeDeletion(false)}>
+                Да, удалить
+              </button>
+              <button type="button" onClick={() => setConfirmDelete(false)}>
+                Отмена
+              </button>
+            </div>
+          ) : (
+            <button type="button" className={styles.delete} onClick={() => setConfirmDelete(true)}>
+              Удалить операцию
+            </button>
+          ))}
+        {padOpen && !deleted && (
           <NumberPad
             labels={{ [NUMBER_PAD_DISMISS_KEY]: t.composer.closeKey }}
             onKey={(key) => (key === NUMBER_PAD_DISMISS_KEY ? setPadOpen(false) : pad.press(key))}

@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, FileText } from 'lucide-react';
 import { parseStatement } from '@/lib/aiClient';
@@ -16,6 +16,8 @@ export function StatementImportPage() {
   const navigate = useNavigate();
   const t = useT();
   const inputRef = useRef<HTMLInputElement>(null);
+  const controllerRef = useRef<AbortController | null>(null);
+  useEffect(() => () => controllerRef.current?.abort(), []);
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -29,6 +31,7 @@ export function StatementImportPage() {
   };
 
   const handleFile = async (file: File) => {
+    if (controllerRef.current) return;
     const problem = validate(file);
     setFileName(file.name);
     if (problem) {
@@ -37,13 +40,19 @@ export function StatementImportPage() {
     }
     setError(null);
     setStatus('analyzing');
+    const controller = new AbortController();
+    controllerRef.current = controller;
     try {
-      const statement = await parseStatement(file);
+      const statement = await parseStatement(file, { signal: controller.signal });
+      if (controller.signal.aborted) return;
       const state: StatementReviewLocationState = { statement, fileName: file.name };
       void navigate('/add/statement/review', { state, replace: true });
     } catch (err) {
+      if (controller.signal.aborted) return;
       setError(err instanceof Error && err.message ? err.message : t.capture.failedStatement);
       setStatus('idle');
+    } finally {
+      if (controllerRef.current === controller) controllerRef.current = null;
     }
   };
 
@@ -56,7 +65,14 @@ export function StatementImportPage() {
   return (
     <div className={styles.root}>
       <div className={styles.header}>
-        <button type="button" className={styles.back} onClick={() => void navigate(-1)}>
+        <button
+          type="button"
+          className={styles.back}
+          onClick={() => {
+            controllerRef.current?.abort();
+            void navigate(-1);
+          }}
+        >
           <ArrowLeft size={18} aria-hidden="true" />
           {t.capture.back}
         </button>

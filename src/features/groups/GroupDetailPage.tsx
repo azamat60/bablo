@@ -130,11 +130,21 @@ export function GroupDetailPage() {
       </label>
 
       <div className={styles.monthRow}>
-        <button type="button" className={styles.monthArrow} onClick={() => setMonth(shiftMonth(month, -1))}>
+        <button
+          type="button"
+          className={styles.monthArrow}
+          aria-label={t.common.back}
+          onClick={() => setMonth(shiftMonth(month, -1))}
+        >
           <ChevronLeft size={22} aria-hidden="true" />
         </button>
         <span className={styles.monthLabel}>{monthLabel(month)}</span>
-        <button type="button" className={styles.monthArrow} onClick={() => setMonth(shiftMonth(month, 1))}>
+        <button
+          type="button"
+          className={styles.monthArrow}
+          aria-label={t.period.nextAria}
+          onClick={() => setMonth(shiftMonth(month, 1))}
+        >
           <ChevronRight size={22} aria-hidden="true" />
         </button>
       </div>

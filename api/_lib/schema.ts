@@ -1,7 +1,6 @@
-import type { AiCategoryContext } from './types.js';
+import type { CategoryLabels } from './categories.js';
 
-export function buildDraftSchema(categories: AiCategoryContext[]) {
-  const categoryIds = categories.map((c) => c.id);
+export function buildDraftSchema(labels: CategoryLabels) {
   return {
     type: 'object',
     additionalProperties: false,
@@ -17,11 +16,15 @@ export function buildDraftSchema(categories: AiCategoryContext[]) {
           properties: {
             amount: { type: 'number', description: 'Positive magnitude in the major currency unit' },
             direction: { type: 'string', enum: ['expense', 'income'] },
-            categoryId: { type: 'string', enum: categoryIds },
             memo: { type: ['string', 'null'] },
+            category: {
+              type: 'string',
+              enum: labels.labels,
+              description: 'One label from the category list, copied exactly',
+            },
             confidence: { type: 'number', description: '0 to 1' },
           },
-          required: ['amount', 'direction', 'categoryId', 'memo', 'confidence'],
+          required: ['amount', 'direction', 'memo', 'category', 'confidence'],
         },
       },
     },

@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { seedCategoriesForPreset } from '@/db/seed';
-import { createAccount } from '@/db/queries/accounts';
-import { updateSettings } from '@/db/queries/settings';
-import { toMinorUnits } from '@/domain/money';
+import { completeOnboarding } from '@/db/queries/onboarding';
+import { AccountControls } from '@/components/AccountAccess/AccountAccess';
 import { getDict, useT } from '@/i18n';
 import { detectLocale, setActiveLocale } from '@/i18n/state';
 import { LanguageStep } from './steps/LanguageStep';
@@ -11,7 +9,7 @@ import { PresetStep } from './steps/PresetStep';
 import { CurrencyStep } from './steps/CurrencyStep';
 import { AccountsStep } from './steps/AccountsStep';
 import { FinishStep } from './steps/FinishStep';
-import { ACCOUNT_COLORS, ACCOUNT_TYPE_OPTIONS, TOTAL_STEPS } from './OnboardingPage.constants';
+import { TOTAL_STEPS } from './OnboardingPage.constants';
 import type { OnboardingState } from './OnboardingPage.types';
 import styles from './OnboardingPage.module.css';
 
@@ -34,6 +32,8 @@ function initialState(): OnboardingState {
 export function OnboardingPage() {
   const [state, setState] = useState<OnboardingState>(initialState);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const submittingRef = useRef(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const t = useT();
 
@@ -64,29 +64,27 @@ export function OnboardingPage() {
   };
 
   const finishOnboarding = async () => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
-    await seedCategoriesForPreset(state.preset, state.locale);
-    let colorIndex = 0;
-    for (const draft of state.accounts) {
-      if (!draft.name.trim()) continue;
-      const icon = ACCOUNT_TYPE_OPTIONS.find((option) => option.type === draft.type)?.icon ?? 'wallet';
-      await createAccount({
-        name: draft.name.trim(),
-        type: draft.type,
-        currency: state.currency,
-        openingBalance: toMinorUnits(draft.openingBalance),
-        color: ACCOUNT_COLORS[colorIndex % ACCOUNT_COLORS.length] ?? '#4f8dfd',
-        icon,
-      });
-      colorIndex += 1;
+    setError('');
+    try {
+      await completeOnboarding(state);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось создать бюджет. Повторите попытку.');
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
     }
-    await updateSettings({ baseCurrency: state.currency, onboardingComplete: true, locale: state.locale });
   };
 
   const copy = STEP_COPY[state.step];
 
   return (
     <div className={styles.root}>
+      <div className={styles.account}>
+        <AccountControls />
+      </div>
       <div className={styles.progress}>
         {Array.from({ length: TOTAL_STEPS }).map((_, index) => (
           <div key={index} className={`${styles.dot} ${index <= state.step ? styles.dotActive : ''}`} />
@@ -99,8 +97,18 @@ export function OnboardingPage() {
           <LanguageStep
             value={state.locale}
             onChange={(locale) => {
+              const previous = getDict();
               setActiveLocale(locale);
-              setState((prev) => ({ ...prev, locale }));
+              const next = getDict();
+              setState((prev) => ({
+                ...prev,
+                locale,
+                accounts: prev.accounts.map((account) => ({
+                  ...account,
+                  name:
+                    account.name === previous.accountType[account.type] ? next.accountType[account.type] : account.name,
+                })),
+              }));
             }}
           />
         )}
@@ -119,6 +127,11 @@ export function OnboardingPage() {
         )}
         {state.step === 4 && <FinishStep state={state} />}
       </div>
+      {error && (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      )}
       <div className={styles.footer}>
         {state.step > 0 && (
           <button type="button" className={styles.backButton} onClick={handleBack} disabled={submitting}>

@@ -1,3 +1,4 @@
+import { profileDatabaseName } from '@/lib/profile';
 import Dexie, { type EntityTable } from 'dexie';
 import type {
   Account,
@@ -33,7 +34,7 @@ export class BabloDB extends Dexie {
   goalContributions!: EntityTable<GoalContribution, 'id'>;
 
   constructor() {
-    super('bablo');
+    super(profileDatabaseName());
     this.version(1).stores({
       accounts: 'id, order, archived, type',
       categoryGroups: 'id, order, kind, archived',
@@ -48,6 +49,7 @@ export class BabloDB extends Dexie {
       rates: 'id, base, quote',
       settings: 'id',
     });
+    this.version(3).stores({ cloudMeta: 'id' });
     this.version(2).stores({
       goals: 'id, order, archived',
       goalContributions: 'id, goalId, date',

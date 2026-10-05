@@ -7,7 +7,7 @@ export function useAccounts(includeArchived = false): Account[] {
   return (
     useLiveQuery(async () => {
       const all = await db.accounts.orderBy('order').toArray();
-      return includeArchived ? all : all.filter((account) => !account.archived);
+      return all.filter((account) => !account.deleted && (includeArchived || !account.archived));
     }, [includeArchived]) ?? []
   );
 }
@@ -23,6 +23,11 @@ export type NewAccountInput = {
 };
 
 export async function createAccount(input: NewAccountInput): Promise<string> {
+  if (
+    !Number.isSafeInteger(input.openingBalance) ||
+    (input.creditLimit !== undefined && (!Number.isSafeInteger(input.creditLimit) || input.creditLimit < 0))
+  )
+    throw new Error('Небезопасная сумма счёта.');
   const order = await db.accounts.count();
   const account: Account = {
     ...newMeta(),

@@ -1,3 +1,4 @@
+import { ApiError, readJson, withAiAttempt } from '../_lib/security.js';
 import { getOpenAIClient, jsonError, MissingApiKeyError } from '../_lib/openai.js';
 import { AI_MODELS } from '../_lib/models.js';
 
@@ -9,16 +10,32 @@ type InsightsRequestBody = {
   byCategory: { name: string; amount: number }[];
 };
 
-export async function POST(request: Request): Promise<Response> {
+async function handlePost(request: Request): Promise<Response> {
   let body: InsightsRequestBody;
   try {
-    body = (await request.json()) as InsightsRequestBody;
-  } catch {
+    body = (await readJson(request, 512 * 1024)) as InsightsRequestBody;
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
     return jsonError('Invalid JSON body', 400);
   }
 
+  if (
+    !body ||
+    typeof body !== 'object' ||
+    !/^\d{4}-(0[1-9]|1[0-2])$/.test(body.month) ||
+    !/^[A-Z]{3}$/.test(body.baseCurrency) ||
+    !Number.isSafeInteger(body.totalIncome) ||
+    !Number.isSafeInteger(body.totalExpense) ||
+    !Array.isArray(body.byCategory) ||
+    body.byCategory.length > 2000 ||
+    body.byCategory.some(
+      (c) => !c || typeof c.name !== 'string' || c.name.length > 200 || !Number.isSafeInteger(c.amount),
+    )
+  )
+    return jsonError('Неверные данные аналитики.', 400);
+
   try {
-    const client = getOpenAIClient();
+    const client = getOpenAIClient(request.signal);
     const topCategories = body.byCategory
       .slice()
       .sort((a, b) => b.amount - a.amount)
@@ -49,7 +66,10 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ summary: response.output_text ?? '' });
   } catch (err) {
     if (err instanceof MissingApiKeyError) return jsonError(err.message, 503);
-    console.error('[ai/insights]', err);
     return jsonError('Failed to generate insights', 500);
   }
+}
+
+export async function POST(request: Request): Promise<Response> {
+  return withAiAttempt(request, (signal) => handlePost(new Request(request, { signal })));
 }

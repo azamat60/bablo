@@ -41,6 +41,8 @@ export function VoiceCapturePage() {
           <>
             <button
               type="button"
+              aria-label={recording ? t.composerAi.stop : t.capture.tapToRecord}
+              disabled={voice.status === 'requesting' || voice.status === 'stopping'}
               className={`${styles.recordButton} ${recording ? styles.recordButtonActive : ''}`}
               onClick={() => (recording ? voice.stop() : void voice.start())}
             >

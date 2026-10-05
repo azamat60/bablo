@@ -41,6 +41,16 @@ export function countsTowardBudget(tx: Transaction): boolean {
   return !tx.deleted && !tx.transferId;
 }
 
+export function checkedMinorUnits(amount: number): number {
+  if (!Number.isSafeInteger(amount)) throw new RangeError('Сумма должна быть безопасным целым числом тыйынов');
+  return amount;
+}
+
+export function sumMinorUnits(...amounts: number[]): number {
+  const sum = amounts.reduce((total, amount) => total + BigInt(checkedMinorUnits(amount)), 0n);
+  return checkedMinorUnits(Number(sum));
+}
+
 /**
  * Converts one of a transaction's amounts into the base currency using the
  * rate stamped on it at write time.
@@ -49,34 +59,49 @@ export function countsTowardBudget(tx: Transaction): boolean {
  * for base-currency transactions and leaves their figures untouched.
  */
 export function amountInBase(tx: Transaction, amount: number): number {
-  const rate = Number.isFinite(tx.rate) && tx.rate > 0 ? tx.rate : 1;
-  return rate === 1 ? amount : Math.round(amount * rate);
+  checkedMinorUnits(amount);
+  if (!Number.isFinite(tx.rate) || tx.rate <= 0) throw new RangeError('Некорректный курс операции');
+  return checkedMinorUnits(tx.rate === 1 ? amount : Math.round(amount * tx.rate));
+}
+
+export function openingBalanceInBase(account: Account, openingBalancesInBase?: ReadonlyMap<string, number>): number {
+  const amount = openingBalancesInBase ? openingBalancesInBase.get(account.id) : account.openingBalance;
+  if (amount === undefined) throw new RangeError(`Нет курса для начального остатка счета ${account.id}`);
+  return checkedMinorUnits(amount);
 }
 
 export function categoryActivityThroughMonth(transactions: Transaction[], categoryId: string, month: string): number {
   return transactions
     .filter((tx) => countsTowardBudget(tx) && transactionMonth(tx.date) <= month)
-    .flatMap(categoryAmountsInTransaction)
-    .filter((entry) => entry.categoryId === categoryId)
-    .reduce((sum, entry) => sum + entry.amount, 0);
+    .reduce((sum, tx) => {
+      for (const entry of categoryAmountsInTransaction(tx)) {
+        if (entry.categoryId === categoryId) sum = sumMinorUnits(sum, amountInBase(tx, entry.amount));
+      }
+      return sum;
+    }, 0);
 }
 
 export function categoryActivityInMonth(transactions: Transaction[], categoryId: string, month: string): number {
   return transactions
     .filter((tx) => countsTowardBudget(tx) && transactionMonth(tx.date) === month)
-    .flatMap(categoryAmountsInTransaction)
-    .filter((entry) => entry.categoryId === categoryId)
-    .reduce((sum, entry) => sum + entry.amount, 0);
+    .reduce((sum, tx) => {
+      for (const entry of categoryAmountsInTransaction(tx)) {
+        if (entry.categoryId === categoryId) sum = sumMinorUnits(sum, amountInBase(tx, entry.amount));
+      }
+      return sum;
+    }, 0);
 }
 
 export function categoryAssignedThroughMonth(budgets: BudgetEntry[], categoryId: string, month: string): number {
   return budgets
     .filter((entry) => entry.categoryId === categoryId && entry.month <= month)
-    .reduce((sum, entry) => sum + entry.assigned, 0);
+    .reduce((sum, entry) => sumMinorUnits(sum, entry.assigned), 0);
 }
 
 export function categoryAssignedInMonth(budgets: BudgetEntry[], categoryId: string, month: string): number {
-  return budgets.find((entry) => entry.categoryId === categoryId && entry.month === month)?.assigned ?? 0;
+  return checkedMinorUnits(
+    budgets.find((entry) => entry.categoryId === categoryId && entry.month === month)?.assigned ?? 0,
+  );
 }
 
 export function categoryAvailable(
@@ -85,9 +110,9 @@ export function categoryAvailable(
   categoryId: string,
   month: string,
 ): number {
-  return (
-    categoryAssignedThroughMonth(budgets, categoryId, month) +
-    categoryActivityThroughMonth(transactions, categoryId, month)
+  return sumMinorUnits(
+    categoryAssignedThroughMonth(budgets, categoryId, month),
+    categoryActivityThroughMonth(transactions, categoryId, month),
   );
 }
 
@@ -98,20 +123,29 @@ export function readyToAssign(
   budgets: BudgetEntry[],
   transactions: Transaction[],
   month: string,
+  openingBalancesInBase?: ReadonlyMap<string, number>,
 ): number {
   const incomeGroupIds = new Set(categoryGroups.filter((g) => g.kind === 'income').map((g) => g.id));
   const incomeCategoryIds = new Set(categories.filter((c) => incomeGroupIds.has(c.groupId)).map((c) => c.id));
-  const openingBalances = accounts.reduce((sum, account) => sum + account.openingBalance, 0);
+  const openingBalances = accounts.reduce(
+    (sum, account) => sumMinorUnits(sum, openingBalanceInBase(account, openingBalancesInBase)),
+    0,
+  );
 
   const incomeThroughMonth = transactions
     .filter((tx) => countsTowardBudget(tx) && transactionMonth(tx.date) <= month)
-    .flatMap(categoryAmountsInTransaction)
-    .filter((entry) => incomeCategoryIds.has(entry.categoryId))
-    .reduce((sum, entry) => sum + entry.amount, 0);
+    .reduce((sum, tx) => {
+      for (const entry of categoryAmountsInTransaction(tx)) {
+        if (incomeCategoryIds.has(entry.categoryId)) sum = sumMinorUnits(sum, amountInBase(tx, entry.amount));
+      }
+      return sum;
+    }, 0);
 
-  const totalAssigned = budgets.filter((entry) => entry.month <= month).reduce((sum, entry) => sum + entry.assigned, 0);
+  const totalAssigned = budgets
+    .filter((entry) => entry.month <= month)
+    .reduce((sum, entry) => sumMinorUnits(sum, entry.assigned), 0);
 
-  return openingBalances + incomeThroughMonth - totalAssigned;
+  return sumMinorUnits(openingBalances, incomeThroughMonth, -totalAssigned);
 }
 
 export type CategoryBudgetTotals = {
@@ -146,7 +180,7 @@ export function buildMonthBudgetIndex(
   const activityThrough = new Map<string, number>();
 
   const bump = (map: Map<string, number>, key: string, delta: number) => {
-    map.set(key, (map.get(key) ?? 0) + delta);
+    map.set(key, sumMinorUnits(map.get(key) ?? 0, delta));
   };
 
   for (const entry of budgets) {
@@ -173,7 +207,7 @@ export function buildMonthBudgetIndex(
     index.set(categoryId, {
       assigned: assignedIn.get(categoryId) ?? 0,
       activity: activityIn.get(categoryId) ?? 0,
-      available: (assignedThrough.get(categoryId) ?? 0) + (activityThrough.get(categoryId) ?? 0),
+      available: sumMinorUnits(assignedThrough.get(categoryId) ?? 0, activityThrough.get(categoryId) ?? 0),
     });
   }
   return index;
@@ -216,9 +250,9 @@ export function summarizeGroup(index: MonthBudgetIndex, categories: Category[]):
   const summaries = categories.map((category) => summarizeCategoryFrom(index, category));
   return {
     categories: summaries,
-    assigned: summaries.reduce((sum, s) => sum + s.assigned, 0),
-    activity: summaries.reduce((sum, s) => sum + s.activity, 0),
-    available: summaries.reduce((sum, s) => sum + s.available, 0),
+    assigned: summaries.reduce((sum, s) => sumMinorUnits(sum, s.assigned), 0),
+    activity: summaries.reduce((sum, s) => sumMinorUnits(sum, s.activity), 0),
+    available: summaries.reduce((sum, s) => sumMinorUnits(sum, s.available), 0),
     hasData: summaries.some((s) => s.assigned !== 0 || s.activity !== 0),
   };
 }

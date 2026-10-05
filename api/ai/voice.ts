@@ -1,3 +1,4 @@
+import { ApiError, readMultipart, validContext, withAiAttempt } from '../_lib/security.js';
 import { toFile } from 'openai';
 import { getOpenAIClient, jsonError, MissingApiKeyError } from '../_lib/openai.js';
 import { AI_MODELS } from '../_lib/models.js';
@@ -19,17 +20,22 @@ function audioExtension(mime: string): string {
   return EXTENSION_BY_TYPE.find(([type]) => type === base)?.[1] ?? 'webm';
 }
 
-export async function POST(request: Request): Promise<Response> {
+async function handlePost(request: Request): Promise<Response> {
   let formData: FormData;
   try {
-    formData = await request.formData();
-  } catch {
+    formData = await readMultipart(request, 11534336);
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
     return jsonError('Expected multipart/form-data', 400);
   }
 
   const audio = formData.get('audio');
   const contextRaw = formData.get('context');
   if (!(audio instanceof Blob)) return jsonError('audio file is required', 400);
+  if (audio.size === 0 || audio.size > 10 * 1024 * 1024)
+    return jsonError('Аудио должно быть от 1 байта до 10 МБ.', 413);
+  if (!EXTENSION_BY_TYPE.some(([type]) => type === audio.type.split(';')[0]?.trim().toLowerCase()))
+    return jsonError('Неподдерживаемый формат аудио.', 400);
   if (typeof contextRaw !== 'string') return jsonError('context is required', 400);
 
   let context: AiRequestContext;
@@ -39,8 +45,9 @@ export async function POST(request: Request): Promise<Response> {
     return jsonError('context must be valid JSON', 400);
   }
 
+  if (!validContext(context)) return jsonError('Invalid context', 400);
   try {
-    const client = getOpenAIClient();
+    const client = getOpenAIClient(request.signal);
     const buffer = Buffer.from(await audio.arrayBuffer());
     // iOS Safari records audio/mp4; the transcription endpoint sniffs by
     // extension, so the filename has to agree with the type.
@@ -52,7 +59,10 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ transcript, draft });
   } catch (err) {
     if (err instanceof MissingApiKeyError) return jsonError(err.message, 503);
-    console.error('[ai/voice]', err);
     return jsonError('Failed to parse voice note', 500);
   }
+}
+
+export async function POST(request: Request): Promise<Response> {
+  return withAiAttempt(request, (signal) => handlePost(new Request(request, { signal })));
 }

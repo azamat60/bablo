@@ -5,7 +5,7 @@ import { db } from '@/db/db';
 import { useAccounts } from '@/db/queries/accounts';
 import { useCategoryGroups } from '@/db/queries/categories';
 import { createCategory } from '@/db/queries/categories';
-import { createTransaction, createTransfer, updateTransaction } from '@/db/queries/transactions';
+import { createTransaction, createTransfer, updateTransaction, updateTransfer } from '@/db/queries/transactions';
 import { useTxDraftStore, type TxDraftKind } from '@/store/txDraft';
 import { groupIcon } from '@/domain/groups';
 import { toMinorUnits } from '@/domain/money';
@@ -20,31 +20,50 @@ const KIND_PARAM: Record<string, TxDraftKind> = {
 };
 
 /**
- * Owns hydration, validation and persistence for the composer.
+ * Seeds the draft store for the composer and reports when it is safe to
+ * mount the form. The form must not mount earlier: its number pad copies the
+ * amount once, so mounting before an edited transaction has loaded would show
+ * whatever the store held last.
  *
  * Hydration order is store -> search params -> defaults. The store wins so a
  * drop (or a round trip through a picker) keeps what the user already chose;
  * search params keep `/add/tx?kind=expense` deep links and the PWA shortcuts
  * working after a cold start.
  */
-export function useComposerDraft(seedKind?: TxDraftKind, editingId?: string) {
-  const t = useT();
+export function useComposerHydration(seedKind?: TxDraftKind, editingId?: string): boolean {
   const [searchParams] = useSearchParams();
   const draft = useTxDraftStore((s) => s.draft);
   const active = useTxDraftStore((s) => s.active);
   const begin = useTxDraftStore((s) => s.begin);
-  const patch = useTxDraftStore((s) => s.patch);
-  const clear = useTxDraftStore((s) => s.clear);
+  const loaded = useLiveQuery(async () => {
+    if (!editingId) return undefined;
+    const existing = await db.transactions.get(editingId);
+    if (!existing || existing.deleted) return undefined;
+    const pair = existing.transferId
+      ? await db.transactions.where('transferId').equals(existing.transferId).toArray()
+      : [];
+    const category = existing.categoryId ? await db.categories.get(existing.categoryId) : undefined;
+    return { existing, pair, category };
+  }, [editingId]);
 
-  const accounts = useAccounts();
-  const groups = useCategoryGroups();
-  const existing = useLiveQuery(() => (editingId ? db.transactions.get(editingId) : undefined), [editingId]);
-
-  // --- hydration -----------------------------------------------------------
   useEffect(() => {
     if (editingId) {
-      if (!existing || draft.editingId === editingId) return;
-      const category = groups.flatMap((g) => g.categories).find((c) => c.id === existing.categoryId);
+      if (!loaded || draft.editingId === editingId) return;
+      const { existing, pair, category } = loaded;
+      if (existing.transferId) {
+        const outgoing = pair.find((tx) => !tx.deleted && tx.amount < 0);
+        const incoming = pair.find((tx) => !tx.deleted && tx.amount > 0);
+        begin({
+          kind: 'transfer',
+          editingId,
+          accountId: outgoing?.accountId ?? existing.accountId,
+          toAccountId: incoming?.accountId,
+          amountText: String(Math.abs(outgoing?.amount ?? existing.amount) / 100),
+          date: existing.date,
+          memo: existing.memo ?? '',
+        });
+        return;
+      }
       begin({
         kind: existing.amount < 0 ? 'expense' : 'income',
         editingId,
@@ -54,6 +73,8 @@ export function useComposerDraft(seedKind?: TxDraftKind, editingId?: string) {
         amountText: String(Math.abs(existing.amount) / 100),
         date: existing.date,
         memo: existing.memo ?? '',
+        source: existing.source,
+        aiConfidence: existing.aiConfidence,
         splits: (existing.splits ?? []).map((split) => ({
           localId: crypto.randomUUID(),
           categoryId: split.categoryId,
@@ -66,8 +87,9 @@ export function useComposerDraft(seedKind?: TxDraftKind, editingId?: string) {
     // kind, so re-seed when the live draft is a different kind — otherwise
     // navigating between those routes would keep the previous one. When the
     // kind already matches, the draft is preserved, so a round trip through a
-    // picker does not discard what the user typed.
-    if (active && (!seedKind || draft.kind === seedKind)) return;
+    // picker does not discard what the user typed. A leftover edit draft is
+    // never reused for a new transaction.
+    if (active && !draft.editingId && (!seedKind || draft.kind === seedKind)) return;
     const paramKind = KIND_PARAM[searchParams.get('kind') ?? ''];
     begin({
       kind: seedKind ?? paramKind ?? 'expense',
@@ -75,7 +97,19 @@ export function useComposerDraft(seedKind?: TxDraftKind, editingId?: string) {
       toAccountId: searchParams.get('toAccount') ?? undefined,
       groupId: searchParams.get('group') ?? undefined,
     });
-  }, [editingId, existing, active, seedKind, searchParams, begin, groups, draft.editingId, draft.kind]);
+  }, [editingId, loaded, active, seedKind, searchParams, begin, draft.editingId, draft.kind]);
+
+  return editingId ? draft.editingId === editingId : active && !draft.editingId;
+}
+
+/** Owns validation and persistence for the composer; expects a hydrated draft. */
+export function useComposerDraft() {
+  const t = useT();
+  const draft = useTxDraftStore((s) => s.draft);
+  const patch = useTxDraftStore((s) => s.patch);
+
+  const accounts = useAccounts();
+  const groups = useCategoryGroups();
 
   // Fall back to the first account rather than blocking Save on a choice the
   // user almost never wants to make.
@@ -98,10 +132,10 @@ export function useComposerDraft(seedKind?: TxDraftKind, editingId?: string) {
   const splitMode = (draft.splits?.length ?? 0) > 0;
 
   const validation: ComposerValidation = useMemo(() => {
-    if (!accountId) return { canSave: false, reason: t.composer.reasonNoAccount };
+    if (!account) return { canSave: false, reason: t.composer.reasonNoAccount };
     if (minorUnits <= 0) return { canSave: false, reason: t.addTx.reasonNoAmount };
     if (draft.kind === 'transfer') {
-      if (!draft.toAccountId) return { canSave: false, reason: t.composer.reasonNoAccount };
+      if (!toAccount) return { canSave: false, reason: t.composer.reasonNoAccount };
       if (draft.toAccountId === accountId) return { canSave: false, reason: t.composer.reasonSameAccount };
       return { canSave: true };
     }
@@ -114,13 +148,25 @@ export function useComposerDraft(seedKind?: TxDraftKind, editingId?: string) {
     }
     if (!draft.groupId) return { canSave: false, reason: t.composer.reasonNoGroup };
     return { canSave: true };
-  }, [accountId, minorUnits, draft.kind, draft.toAccountId, draft.groupId, draft.splits, splitMode, t]);
+  }, [
+    accountId,
+    account,
+    toAccount,
+    minorUnits,
+    draft.kind,
+    draft.toAccountId,
+    draft.groupId,
+    draft.splits,
+    splitMode,
+    t,
+  ]);
 
+  /** Persists the draft; the caller clears it once it has left the page. */
   const save = async (): Promise<boolean> => {
     if (!validation.canSave || !accountId) return false;
 
     if (draft.kind === 'transfer') {
-      await createTransfer({
+      const input = {
         fromAccountId: accountId,
         toAccountId: draft.toAccountId!,
         amount: minorUnits,
@@ -128,8 +174,9 @@ export function useComposerDraft(seedKind?: TxDraftKind, editingId?: string) {
         toCurrency: toAccount?.currency ?? currency,
         date: draft.date,
         memo: draft.memo.trim() || undefined,
-      });
-      clear();
+      };
+      if (draft.editingId) await updateTransfer(draft.editingId, input);
+      else await createTransfer(input);
       return true;
     }
 
@@ -166,14 +213,12 @@ export function useComposerDraft(seedKind?: TxDraftKind, editingId?: string) {
 
     if (draft.editingId) await updateTransaction(draft.editingId, payload);
     else await createTransaction(payload);
-    clear();
     return true;
   };
 
   return {
     draft,
     patch,
-    clear,
     accounts,
     account,
     toAccount,

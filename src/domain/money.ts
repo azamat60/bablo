@@ -7,12 +7,21 @@ function activeIntlLocale(): string {
   return INTL_LOCALE[getActiveLocale()];
 }
 
+export function parseMinorUnits(input: string): number | undefined {
+  const match = /^([+-]?)(\d*)(?:[.,](\d*))?$/.exec(input.trim());
+  if (!match || (!match[2] && !match[3])) return undefined;
+  const whole = (match[2] ?? '').replace(/^0+/, '') || '0';
+  if (whole.length > 14) return undefined;
+  const fraction = match[3] ?? '';
+  const cents = BigInt(fraction.slice(0, 2).padEnd(2, '0'));
+  const rounded = BigInt(whole) * 100n + cents + (Number(fraction[2] ?? '0') >= 5 ? 1n : 0n);
+  if (rounded > BigInt(Number.MAX_SAFE_INTEGER)) return undefined;
+  const value = Number(rounded);
+  return match[1] === '-' && value !== 0 ? -value : value;
+}
+
 export function toMinorUnits(input: string): number {
-  const normalized = input.replace(',', '.').trim();
-  if (normalized === '') return 0;
-  const value = Number.parseFloat(normalized);
-  if (Number.isNaN(value)) return 0;
-  return Math.round(value * 100);
+  return parseMinorUnits(input) ?? 0;
 }
 
 const PREFIX_CURRENCIES = new Set(['USD']);
@@ -30,8 +39,19 @@ function formatNumber(value: number, locale: string, options?: Intl.NumberFormat
 }
 
 export function formatMoney(minorUnits: number, currency: string, locale = activeIntlLocale()): string {
-  const value = minorUnits / 100;
-  const number = formatNumber(value, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (!Number.isSafeInteger(minorUnits)) throw new Error('Небезопасная денежная сумма.');
+  const absolute = BigInt(Math.abs(minorUnits));
+  const whole = absolute / 100n;
+  const fraction = String(absolute % 100n).padStart(2, '0');
+  const formatter = new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const sign =
+    minorUnits < 0 ? (formatter.formatToParts(-1).find((part) => part.type === 'minusSign')?.value ?? '-') : '';
+  const number =
+    sign +
+    formatter
+      .formatToParts(whole)
+      .map((part) => (part.type === 'fraction' ? fraction : part.value))
+      .join('');
   const symbol = currencySymbol(currency);
   return PREFIX_CURRENCIES.has(currency) ? `${symbol}${number}` : `${number} ${symbol}`;
 }
@@ -53,4 +73,10 @@ export function formatMoneyCompact(minorUnits: number, currency: string, locale 
 export function formatNumberCompact(minorUnits: number, locale = activeIntlLocale()): string {
   const value = minorUnits / 100;
   return formatNumber(value, locale, { notation: 'compact', maximumFractionDigits: 1 });
+}
+
+export function decimalFromMinor(minor: number): string {
+  if (!Number.isSafeInteger(minor)) throw new Error('Небезопасная денежная сумма.');
+  const absolute = BigInt(Math.abs(minor));
+  return `${minor < 0 ? '-' : ''}${absolute / 100n}.${String(absolute % 100n).padStart(2, '0')}`;
 }

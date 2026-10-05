@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useLocation, useNavigate } from 'react-router';
 import { v4 as uuidv4 } from 'uuid';
@@ -7,8 +7,7 @@ import { db } from '@/db/db';
 import { AppIcon } from '@/components/AppIcon';
 import { useAccounts } from '@/db/queries/accounts';
 import { useSettings } from '@/db/queries/settings';
-import { createTransaction } from '@/db/queries/transactions';
-import { upsertPayee } from '@/db/queries/payees';
+import { importStatementRows, resolveRows, type StatementIncludeOverrides } from './StatementReviewPage.utils';
 import { deleteAiJob } from '@/db/queries/aiJobs';
 import { AccountPickerSheet } from '@/components/AccountPickerSheet';
 import { CategoryPickerSheet } from '@/components/CategoryPickerSheet';
@@ -45,6 +44,11 @@ export function ReviewDraftPage() {
   const [accountPickerOpen, setAccountPickerOpen] = useState(false);
   const [categoryPickerForRow, setCategoryPickerForRow] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const [error, setError] = useState('');
+  const [choices, setChoices] = useState<StatementIncludeOverrides>({});
+  const existing = useLiveQuery(() => db.transactions.toArray(), []) ?? [];
+  const payees = useLiveQuery(() => db.payees.toArray(), []) ?? [];
 
   const accountId = accountIdOverride ?? accounts[0]?.id;
   const account = accounts.find((a) => a.id === accountId);
@@ -54,33 +58,52 @@ export function ReviewDraftPage() {
     setRows((prev) => prev.map((row) => (row.localId === localId ? { ...row, ...patch } : row)));
   };
 
-  const includedRows = rows.filter((row) => row.include && toMinorUnits(row.amountText) > 0 && row.categoryId);
-  const canSave = Boolean(accountId) && includedRows.length > 0;
+  const reviewed = resolveRows(
+    rows.map((row) => ({ ...row, date, kind: row.direction, payee: state?.draft.merchant ?? '' })),
+    existing,
+    choices,
+    { accountId: accountId ?? '', currency, payees },
+  );
+  const canSave =
+    Boolean(accountId) && account?.currency === currency && reviewed.some((row) => row.include && row.categoryId);
 
   const handleSave = async () => {
-    if (!canSave || !accountId) return;
+    if (!canSave || !accountId || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
-    const payeeId = state?.draft.merchant
-      ? await upsertPayee(state.draft.merchant, includedRows[0]?.categoryId)
-      : undefined;
-    for (const row of includedRows) {
-      const amount = toMinorUnits(row.amountText);
-      await createTransaction({
-        accountId,
-        date,
-        amount: row.direction === 'expense' ? -amount : amount,
-        currency,
-        categoryId: row.categoryId,
-        memo: row.memo.trim() || undefined,
-        payeeId,
-        source: state?.source ?? 'text',
-      });
+    setError('');
+    try {
+      await db.transaction(
+        'rw',
+        [
+          db.accounts,
+          db.categories,
+          db.categoryGroups,
+          db.payees,
+          db.transactions,
+          db.settings,
+          db.rates,
+          db.syncQueue,
+          db.aiJobs,
+        ],
+        async () => {
+          await importStatementRows({
+            rows: reviewed,
+            accountId,
+            currency,
+            groups: [],
+            source: state?.source ?? 'text',
+          });
+          if (state?.jobId) await deleteAiJob(state.jobId);
+        },
+      );
+      void navigate('/', { replace: true });
+    } catch (problem) {
+      setError(problem instanceof Error ? problem.message : 'Не удалось сохранить.');
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
-    if (state?.jobId) {
-      await deleteAiJob(state.jobId);
-    }
-    setSaving(false);
-    void navigate('/', { replace: true });
   };
 
   const handleDiscard = async () => {
@@ -117,6 +140,10 @@ export function ReviewDraftPage() {
         </button>
       </div>
 
+      {error && <p role="alert">{error}</p>}
+      {account && account.currency !== currency && (
+        <p role="alert">Валюта распознавания: {currency}. Выберите счёт в этой валюте.</p>
+      )}
       {state.draft.merchant && <div className={styles.merchant}>{t.reviewDraft.detected(state.draft.merchant)}</div>}
 
       <div className={styles.fields}>
@@ -139,16 +166,30 @@ export function ReviewDraftPage() {
 
       <div className={styles.rowsHeading}>{t.reviewDraft.found(rows.length)}</div>
       <div className={styles.rowList}>
-        {rows.map((row) => (
-          <ReviewRowItem
-            key={row.localId}
-            row={row}
-            currency={currency}
-            onToggleInclude={() => updateRow(row.localId, { include: !row.include })}
-            onAmountChange={(amountText) => updateRow(row.localId, { amountText })}
-            onMemoChange={(memo) => updateRow(row.localId, { memo })}
-            onPickCategory={() => setCategoryPickerForRow(row.localId)}
-          />
+        {rows.map((row, index) => (
+          <div key={row.localId}>
+            {reviewed[index]?.duplicate && <p role="status">Дубль. Отметьте строку для явного подтверждения.</p>}
+            <ReviewRowItem
+              key={row.localId}
+              row={{ ...row, include: reviewed[index]?.include ?? false }}
+              currency={currency}
+              onToggleInclude={() => {
+                const checked = reviewed[index];
+                if (checked)
+                  setChoices((prev) => ({
+                    ...prev,
+                    [row.localId]: {
+                      include: !checked.include,
+                      fingerprint: checked.fingerprint,
+                      confirmedDuplicate: checked.duplicate && !checked.include,
+                    },
+                  }));
+              }}
+              onAmountChange={(amountText) => updateRow(row.localId, { amountText })}
+              onMemoChange={(memo) => updateRow(row.localId, { memo })}
+              onPickCategory={() => setCategoryPickerForRow(row.localId)}
+            />
+          </div>
         ))}
       </div>
 

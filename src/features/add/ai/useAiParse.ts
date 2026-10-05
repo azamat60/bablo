@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
 import { enqueueAiJob, type NewAiJobInput } from '@/db/queries/aiJobs';
@@ -17,18 +17,16 @@ export type AiParseState = {
   error: string | null;
   result: AiParseResult | null;
   jobId: string | null;
-  /**
-   * Runs `run`; when it fails offline, queues `offlineInput` instead and
-   * resolves the result later, once the background processor finishes it.
-   */
-  submit: (run: () => Promise<AiParseResult>, offlineInput: Omit<NewAiJobInput, 'kind'>) => Promise<void>;
+  submit: (
+    run: (signal: AbortSignal) => Promise<AiParseResult>,
+    offlineInput: Omit<NewAiJobInput, 'kind'>,
+  ) => Promise<void>;
+  cancel: () => void;
   reset: () => void;
 };
 
-/**
- * The status machine every AI capture shares. The three capture pages used to
- * carry identical copies of it; the composer needs it too, so it lives here.
- */
+type ActiveParse = { controller: AbortController; generation: number };
+
 export function useAiParse(kind: AiJobKind, fallbackError: string): AiParseState {
   const [local, setLocal] = useState<{ status: AiParseStatus; error: string | null; result: AiParseResult | null }>({
     status: 'idle',
@@ -36,10 +34,20 @@ export function useAiParse(kind: AiJobKind, fallbackError: string): AiParseState
     result: null,
   });
   const [jobId, setJobId] = useState<string | null>(null);
+  const activeRef = useRef<ActiveParse | null>(null);
+  const generationRef = useRef(0);
+  const mountedRef = useRef(true);
 
-  // Follow a queued job so an offline capture completes in place when the
-  // connection returns, instead of only surfacing on the /ai-jobs page. The
-  // outcome is derived from the live row rather than copied into state.
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      generationRef.current += 1;
+      activeRef.current?.controller.abort();
+      activeRef.current = null;
+    };
+  }, []);
+
   const job = useLiveQuery(() => (jobId ? db.aiJobs.get(jobId) : undefined), [jobId]);
   const fromJob: Partial<typeof local> =
     local.status === 'queued' && job?.status === 'done' && job.resultDraft
@@ -50,31 +58,68 @@ export function useAiParse(kind: AiJobKind, fallbackError: string): AiParseState
 
   const submit = useCallback<AiParseState['submit']>(
     async (run, offlineInput) => {
+      if (activeRef.current || !mountedRef.current) return;
+      const active = { controller: new AbortController(), generation: ++generationRef.current };
+      activeRef.current = active;
+      const isCurrent = () =>
+        mountedRef.current &&
+        activeRef.current === active &&
+        generationRef.current === active.generation &&
+        !active.controller.signal.aborted;
+      setJobId(null);
       setLocal({ status: 'analyzing', error: null, result: null });
       try {
-        const next = await run();
-        setLocal({ status: 'done', error: null, result: next });
+        const next = await run(active.controller.signal);
+        if (isCurrent()) setLocal({ status: 'done', error: null, result: next });
       } catch (err) {
-        if (typeof navigator !== 'undefined' && !navigator.onLine) {
-          const id = await enqueueAiJob({ kind, ...offlineInput });
-          setJobId(id);
-          setLocal({ status: 'queued', error: null, result: null });
+        if (!isCurrent()) return;
+        if (err instanceof Error && err.name === 'AbortError') {
+          setLocal({ status: 'idle', error: null, result: null });
           return;
+        }
+        const networkFailure = err instanceof TypeError || (err instanceof Error && err.name === 'NetworkError');
+        if (networkFailure && typeof navigator !== 'undefined' && !navigator.onLine) {
+          try {
+            const id = await enqueueAiJob({ kind, ...offlineInput });
+            if (!isCurrent()) {
+              await db.aiJobs.delete(id);
+              return;
+            }
+            setJobId(id);
+            setLocal({ status: 'queued', error: null, result: null });
+            return;
+          } catch (queueError) {
+            if (isCurrent()) {
+              setLocal({
+                status: 'error',
+                error: queueError instanceof Error && queueError.message ? queueError.message : fallbackError,
+                result: null,
+              });
+            }
+            return;
+          }
         }
         setLocal({
           status: 'error',
           error: err instanceof Error && err.message ? err.message : fallbackError,
           result: null,
         });
+      } finally {
+        if (activeRef.current === active) activeRef.current = null;
       }
     },
     [kind, fallbackError],
   );
 
-  const reset = useCallback(() => {
-    setLocal({ status: 'idle', error: null, result: null });
-    setJobId(null);
+  const cancel = useCallback(() => {
+    generationRef.current += 1;
+    activeRef.current?.controller.abort();
+    activeRef.current = null;
+    if (mountedRef.current) {
+      setLocal({ status: 'idle', error: null, result: null });
+      setJobId(null);
+    }
   }, []);
 
-  return { ...local, ...fromJob, jobId, submit, reset };
+  return { ...local, ...fromJob, jobId, submit, cancel, reset: cancel };
 }

@@ -53,3 +53,12 @@
   min-width: 96px;
   text-align: center;
 }
+
+@media (max-width: 360px) {
+  .rangeNav {
+    gap: 0;
+  }
+  .rangeLabel {
+    min-width: 74px;
+  }
+}

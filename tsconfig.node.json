@@ -14,5 +14,12 @@
     "noUnusedParameters": true,
     "types": ["node"]
   },
-  "include": ["vite.config.ts", "plugins/**/*.ts", "api/**/*.ts", "scripts/**/*.ts", "vitest.config.ts"]
+  "include": [
+    "vite.config.ts",
+    "plugins/**/*.ts",
+    "api/**/*.ts",
+    "scripts/**/*.ts",
+    "vitest.config.ts",
+    "vite.worker.config.ts"
+  ]
 }

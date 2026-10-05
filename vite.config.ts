@@ -7,6 +7,7 @@ export default defineConfig(({ mode }) => {
   Object.assign(process.env, loadEnv(mode, process.cwd(), ''));
 
   return {
+    build: { outDir: 'dist/client' },
     plugins: [
       react(),
       apiDevPlugin(),
