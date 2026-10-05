@@ -40,10 +40,9 @@ export default {
       }
     }
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response(null, { status: 405 });
-    if (url.pathname === '/privacy') url.pathname = '/privacy.html';
     const asset = await env.ASSETS.fetch(new Request(url, request));
     if (asset.status !== 404 || !request.headers.get('Accept')?.includes('text/html')) return asset;
-    url.pathname = '/index.html';
+    url.pathname = '/';
     return env.ASSETS.fetch(new Request(url, request));
   },
 };

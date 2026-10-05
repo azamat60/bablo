@@ -39,7 +39,7 @@ describe('Sites worker routing', () => {
         })
       ).status,
     ).toBe(200);
-    expect(paths).toEqual(['/auth/callback', '/index.html']);
+    expect(paths).toEqual(['/auth/callback', '/']);
     expect(
       (await worker.fetch(new Request('https://bablo.example/missing.js'), { ASSETS: assets('', 404) })).status,
     ).toBe(404);
@@ -54,6 +54,6 @@ describe('Sites worker routing', () => {
         },
       },
     });
-    expect(path).toBe('/privacy.html');
+    expect(path).toBe('/privacy');
   });
 });
