@@ -20,7 +20,7 @@ npm run dev -- --host 127.0.0.1 --port 5174 --strictPort
 
 Google provider включён; парольный и анонимный вход отключены. OAuth client хранится в Google Cloud, client secret — в настройке Google provider Supabase. Redirect URI Google: `https://lqiuzaglpyhqecfffyru.supabase.co/auth/v1/callback`.
 
-В Supabase Auth разрешён `http://localhost:5174/auth/callback`. Для публикации добавьте точный HTTPS origin и `/auth/callback` в URL Configuration. Вход использует PKCE; API проверяет `getClaims()` и выполняет SELECT/INSERT/UPDATE с JWT пользователя. Sites-заголовки владельца не определяют.
+В Supabase Auth разрешены `http://localhost:5174/auth/callback` и `https://bablo-budget.azgalord.chatgpt.site/auth/callback`. Site URL: `https://bablo-budget.azgalord.chatgpt.site`. При смене домена добавьте его точный HTTPS callback в URL Configuration. Вход использует PKCE; API проверяет `getClaims()` и выполняет SELECT/INSERT/UPDATE с JWT пользователя. Sites-заголовки владельца не определяют.
 
 Таблица `budget_ledgers` хранит отдельный ledger v3 каждого пользователя. RLS допускает только владельца; анонимная роль не получает доступ. Обновление проверяет `user_id` и ожидаемую `revision` атомарно. Конфликт возвращает 409; клиент сохраняет локальный ввод, сравнивает записи и требует выбора для конфликтующих изменений. После потерянного ответа PUT клиент сначала проверяет серверную версию.
 
@@ -43,4 +43,4 @@ npm audit
 
 После первой облачной записи откат версии приложения должен сохранять Supabase источником бюджета. Не переключайте пользователей обратно на D1 или общую локальную базу. Сначала экспортируйте полную резервную копию; не удаляйте D1 при переключении.
 
-Google Cloud OAuth пока имеет статус Testing и External, с базовыми scopes openid/email/profile. Полная production-настройка требует публичного HTTPS homepage/privacy URL и выполнения требований Google к домену.
+Google Cloud OAuth настроен как In production / External, с базовыми scopes openid/email/profile. Homepage: `https://bablo-budget.azgalord.chatgpt.site`; privacy: `https://bablo-budget.azgalord.chatgpt.site/privacy`. Google client secret хранится в Supabase provider. Sites открыт для посещения экрана входа; финансовые API требуют JWT пользователя.
