@@ -1,3 +1,4 @@
+import { authenticatedFetch } from './auth';
 import { db } from '@/db/db';
 import { todayIsoDate } from '@/domain/transactions';
 import type { AiDraft, AiRequestContext, AiStatement } from './aiTypes';
@@ -5,6 +6,7 @@ import type { AiDraft, AiRequestContext, AiStatement } from './aiTypes';
 export type AiContextOptions = {
   /** The group the user is already in; its categories are sent as preferred. */
   preferredGroupId?: string;
+  signal?: AbortSignal;
 };
 
 export async function buildAiContext(options: AiContextOptions = {}): Promise<AiRequestContext> {
@@ -14,12 +16,17 @@ export async function buildAiContext(options: AiContextOptions = {}): Promise<Ai
     db.settings.get('singleton'),
   ]);
   const groups = await db.categoryGroups.toArray();
-  const groupKindById = new Map(groups.map((g) => [g.id, g.kind]));
+  const groupById = new Map(groups.map((g) => [g.id, g]));
   const live = categories.filter((c) => !c.archived);
-  const preferredGroup = options.preferredGroupId ? groups.find((g) => g.id === options.preferredGroupId) : undefined;
+  const preferredGroup = options.preferredGroupId ? groupById.get(options.preferredGroupId) : undefined;
 
   return {
-    categories: live.map((c) => ({ id: c.id, name: c.name, kind: groupKindById.get(c.groupId) ?? 'expense' })),
+    categories: live.map((c) => ({
+      id: c.id,
+      name: c.name,
+      kind: groupById.get(c.groupId)?.kind ?? 'expense',
+      group: groupById.get(c.groupId)?.name,
+    })),
     payees: payees.map((p) => p.name),
     baseCurrency: settings?.baseCurrency ?? 'USD',
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -54,11 +61,16 @@ export async function parseReceipt(
   options?: AiContextOptions,
 ): Promise<AiDraft> {
   const context = await buildAiContext(options);
-  const response = await fetch('/api/ai/receipt', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ imageDataUrl, caption, context }),
-  });
+  const response = await authenticatedFetch(
+    '/api/ai/receipt',
+    {
+      method: 'POST',
+      signal: options?.signal,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ imageDataUrl, caption, context }),
+    },
+    200_000,
+  );
   const { draft } = await readJsonOrThrow<{ draft: AiDraft }>(response);
   return draft;
 }
@@ -71,17 +83,27 @@ export async function parseVoice(
   const formData = new FormData();
   formData.append('audio', audioBlob, audioFileName(audioBlob));
   formData.append('context', JSON.stringify(context));
-  const response = await fetch('/api/ai/voice', { method: 'POST', body: formData });
+  const response = await authenticatedFetch(
+    '/api/ai/voice',
+    { method: 'POST', body: formData, signal: options?.signal },
+    200_000,
+  );
   return readJsonOrThrow<{ transcript: string; draft: AiDraft }>(response);
 }
 
 export async function parseText(text: string, options?: AiContextOptions): Promise<AiDraft> {
+  if (text.length > 20_000) throw new Error('Максимум 20 000 символов.');
   const context = await buildAiContext(options);
-  const response = await fetch('/api/ai/text', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ text, context }),
-  });
+  const response = await authenticatedFetch(
+    '/api/ai/text',
+    {
+      method: 'POST',
+      signal: options?.signal,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text, context }),
+    },
+    200_000,
+  );
   const { draft } = await readJsonOrThrow<{ draft: AiDraft }>(response);
   return draft;
 }
@@ -91,7 +113,11 @@ export async function parseStatement(file: File, options?: AiContextOptions): Pr
   const formData = new FormData();
   formData.append('file', file, file.name || 'statement.pdf');
   formData.append('context', JSON.stringify(context));
-  const response = await fetch('/api/ai/statement', { method: 'POST', body: formData });
+  const response = await authenticatedFetch(
+    '/api/ai/statement',
+    { method: 'POST', body: formData, signal: options?.signal },
+    200_000,
+  );
   const { statement } = await readJsonOrThrow<{ statement: AiStatement }>(response);
   return statement;
 }

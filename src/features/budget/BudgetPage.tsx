@@ -5,6 +5,7 @@ import { useAccounts } from '@/db/queries/accounts';
 import { useCategoryGroups } from '@/db/queries/categories';
 import { useBudgets } from '@/db/queries/budgets';
 import { useTransactions } from '@/db/queries/transactions';
+import { useOpeningBalancesInBase } from '@/db/queries/rates';
 import { useSettings } from '@/db/queries/settings';
 import { useBudgetMonthStore } from '@/store/budgetMonth';
 import { buildMonthBudgetIndex, monthLabel, readyToAssign, shiftMonth, summarizeGroup } from '@/domain/budget';
@@ -38,9 +39,13 @@ export function BudgetPage() {
   const [expandedIds, setExpandedIds] = useState<Set<string> | null>(null);
 
   const currency = settings?.baseCurrency ?? 'USD';
+  const opening = useOpeningBalancesInBase(currency);
   const expenseGroups = useMemo(() => allGroups.filter((group) => group.kind === 'expense'), [allGroups]);
   const allCategories = allGroups.flatMap((group) => group.categories);
-  const toBeAssigned = readyToAssign(accounts, allGroups, allCategories, budgets, transactions, month);
+  const toBeAssigned =
+    opening && !opening.missing.length
+      ? readyToAssign(accounts, allGroups, allCategories, budgets, transactions, month, opening.balances)
+      : 0;
 
   const budgetIndex = useMemo(
     () => buildMonthBudgetIndex(budgets, transactions, month),
@@ -101,7 +106,11 @@ export function BudgetPage() {
       <Card variant="raised" className={styles.hero}>
         <div className={styles.heroLabel}>{t.budget.readyToAssign}</div>
         <div className={`${styles.heroValue} ${toBeAssigned >= 0 ? styles.heroPositive : styles.heroNegative}`}>
-          {formatMoney(toBeAssigned, currency)}
+          {!opening
+            ? '…'
+            : opening.missing.length
+              ? `Нет курса: ${opening.missing.join(', ')}`
+              : formatMoney(toBeAssigned, currency)}
         </div>
         <div className={styles.heroHint}>{t.budget.readyToAssignHint}</div>
       </Card>

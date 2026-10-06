@@ -55,3 +55,14 @@
   border-color: transparent;
   color: var(--color-primary-text);
 }
+
+@media (max-width: 460px) {
+  .topRow {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .topRow > :first-child {
+    flex-basis: 100%;
+    min-width: 0;
+  }
+}

@@ -45,14 +45,14 @@ export function DashboardPage() {
 
   // Flat lookup so the gesture can turn a tile id back into a draggable item.
   const tilesById = useMemo(() => {
-    const map = new Map<string, DashboardTile>();
-    for (const section of sections) for (const tile of section.tiles) map.set(tile.id, tile);
+    const map = new Map<string, { tile: DashboardTile; section: DashboardSection }>();
+    for (const section of sections) for (const tile of section.tiles) map.set(tile.id, { tile, section });
     return map;
   }, [sections]);
 
   const resolveItem = useCallback(
     (tileId: string): DragItem | null => {
-      const tile = tilesById.get(tileId);
+      const tile = tilesById.get(tileId)?.tile;
       if (!tile || tile.kind === 'add') return null;
       return { id: tile.id, kind: tile.kind, color: tile.color, icon: tile.icon, label: tile.label };
     },
@@ -66,8 +66,6 @@ export function DashboardPage() {
     },
     [beginDraft, navigate],
   );
-
-  const gestureRef = useDragGesture({ resolveItem, onDrop: handleDrop, scrollRef });
 
   const tileState = (tileId: string): TileState => {
     if (dragPhase !== 'dragging') return 'idle';
@@ -100,6 +98,16 @@ export function DashboardPage() {
     },
     [navigate],
   );
+
+  const handleTap = useCallback(
+    (tileId: string) => {
+      const entry = tilesById.get(tileId);
+      if (entry) handleTile(entry.section, tileId);
+    },
+    [tilesById, handleTile],
+  );
+
+  const gestureRef = useDragGesture({ resolveItem, onDrop: handleDrop, onTap: handleTap, scrollRef });
 
   const addLabel = (section: DashboardSection) =>
     section.id === 'accounts' ? t.dashboard.addAccount : t.dashboard.addGroup;

@@ -13,11 +13,11 @@ export function useCategoryGroups(includeArchived = false): CategoryGroupWithCat
         db.categories.orderBy('order').toArray(),
       ]);
       return groups
-        .filter((group) => includeArchived || !group.archived)
+        .filter((group) => !group.deleted && (includeArchived || !group.archived))
         .map((group) => ({
           ...group,
           categories: categories.filter(
-            (category) => category.groupId === group.id && (includeArchived || !category.archived),
+            (category) => category.groupId === group.id && !category.deleted && (includeArchived || !category.archived),
           ),
         }));
     }, [includeArchived]) ?? []
@@ -70,13 +70,17 @@ export async function archiveCategory(id: string): Promise<void> {
 export async function deleteCategoryIfUnused(id: string): Promise<'deleted' | 'archived' | 'blocked'> {
   const category = await db.categories.get(id);
   if (!category || category.isSystem) return 'blocked';
-  const usedByTransaction = await db.transactions.where('categoryId').equals(id).count();
+  const usedByTransaction = (await db.transactions.toArray()).some(
+    (tx) => tx.categoryId === id || tx.splits?.some((split) => split.categoryId === id),
+  );
+  const usedByRecurring = (await db.recurring.toArray()).some((row) => row.categoryId === id);
+  const usedByPayee = (await db.payees.toArray()).some((row) => row.defaultCategoryId === id);
   const usedByBudget = await db.budgets.where('categoryId').equals(id).count();
-  if (usedByTransaction > 0 || usedByBudget > 0) {
+  if (usedByTransaction || usedByRecurring || usedByPayee || usedByBudget > 0) {
     await archiveCategory(id);
     return 'archived';
   }
-  await db.categories.delete(id);
+  await db.categories.update(id, { deleted: true, ...touchMeta(category.rev) });
   return 'deleted';
 }
 

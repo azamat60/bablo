@@ -1,3 +1,4 @@
+import { AccountControls } from '@/components/AccountAccess/AccountAccess';
 import { Link } from 'react-router';
 import { ChevronRight, Tags, Repeat, Package, Coins, Bot, PiggyBank, ArrowLeftRight } from 'lucide-react';
 import { useSettings, updateSettings } from '@/db/queries/settings';
@@ -32,6 +33,7 @@ export function SettingsPage() {
   return (
     <div className={styles.root}>
       <h1 className={styles.title}>{t.settings.title}</h1>
+      <AccountControls />
 
       <div className={styles.list}>
         <Link to="/settings/categories" className={styles.row}>

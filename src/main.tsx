@@ -1,17 +1,35 @@
+import { configureProfile } from '@/lib/profile';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router';
 import { registerSW } from 'virtual:pwa-register';
-import { ensureSeeded } from '@/db/seed';
-import { router } from '@/router';
+import { initializeAuth } from '@/lib/auth';
 import '@/styles/tokens.css';
 
 registerSW({ immediate: true });
 
+let user: Awaited<ReturnType<typeof initializeAuth>> = null;
+let error = '';
+try {
+  user = await initializeAuth();
+} catch (problem) {
+  error = problem instanceof Error ? problem.message : 'Вход не удался.';
+}
+const local = sessionStorage.getItem('bablo.local') === 'true' && !user;
+configureProfile(user?.id);
+if (location.pathname === '/auth/callback') {
+  if (!user && !error) error = 'Вход отменён или ссылка истекла. Попробуйте снова.';
+  history.replaceState(null, '', '/');
+}
+const { ensureSeeded } = await import('@/db/seed');
+const { router } = await import('@/router');
+const { AccountAccess } = await import('@/components/AccountAccess/AccountAccess');
 await ensureSeeded();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <AccountAccess user={user} local={local} error={error}>
+      <RouterProvider router={router} />
+    </AccountAccess>
   </StrictMode>,
 );

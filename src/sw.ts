@@ -7,7 +7,9 @@ declare const self: ServiceWorkerGlobalScope;
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
 
-registerRoute(new NavigationRoute(createHandlerBoundToURL('/index.html')));
+registerRoute(
+  new NavigationRoute(createHandlerBoundToURL('/index.html'), { denylist: [/^\/api\//, /^\/privacy(?:\.html)?$/] }),
+);
 
 self.addEventListener('install', () => {
   void self.skipWaiting();

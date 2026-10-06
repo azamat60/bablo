@@ -29,7 +29,14 @@ export default tseslint.config(
   },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommendedTypeChecked],
-    files: ['api/**/*.ts', 'plugins/**/*.ts', 'scripts/**/*.ts', 'vite.config.ts', 'vitest.config.ts'],
+    files: [
+      'api/**/*.ts',
+      'plugins/**/*.ts',
+      'scripts/**/*.ts',
+      'vite.config.ts',
+      'vite.worker.config.ts',
+      'vitest.config.ts',
+    ],
     languageOptions: {
       ecmaVersion: 2023,
       globals: globals.node,

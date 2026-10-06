@@ -1,7 +1,7 @@
 import { format, parseISO } from 'date-fns';
 import { getDict } from '@/i18n';
 import type { Account, Category, Payee, Transaction } from '@/db/types';
-import { shiftMonth } from './budget';
+import { amountInBase, categoryAmountsInTransaction, openingBalanceInBase, shiftMonth, sumMinorUnits } from './budget';
 import { periodRange, type Period } from './period';
 
 function transactionMonth(dateIso: string): string {
@@ -28,15 +28,13 @@ function sliceByCategory(transactions: Transaction[], categories: Category[]): C
   const totals = new Map<string, number>();
 
   for (const tx of transactions) {
-    const entries =
-      tx.splits && tx.splits.length > 0
-        ? tx.splits
-        : tx.categoryId
-          ? [{ categoryId: tx.categoryId, amount: tx.amount }]
-          : [];
+    const entries = categoryAmountsInTransaction(tx);
     for (const entry of entries) {
       if (entry.amount >= 0) continue;
-      totals.set(entry.categoryId, (totals.get(entry.categoryId) ?? 0) + Math.abs(entry.amount));
+      totals.set(
+        entry.categoryId,
+        sumMinorUnits(totals.get(entry.categoryId) ?? 0, Math.abs(amountInBase(tx, entry.amount))),
+      );
     }
   }
 
@@ -77,15 +75,10 @@ export function incomeByCategoryInRange(
   const totals = new Map<string, number>();
 
   for (const tx of inRange(transactions, period)) {
-    const entries =
-      tx.splits && tx.splits.length > 0
-        ? tx.splits
-        : tx.categoryId
-          ? [{ categoryId: tx.categoryId, amount: tx.amount }]
-          : [];
+    const entries = categoryAmountsInTransaction(tx);
     for (const entry of entries) {
       if (entry.amount <= 0) continue;
-      totals.set(entry.categoryId, (totals.get(entry.categoryId) ?? 0) + entry.amount);
+      totals.set(entry.categoryId, sumMinorUnits(totals.get(entry.categoryId) ?? 0, amountInBase(tx, entry.amount)));
     }
   }
 
@@ -107,8 +100,9 @@ function sumIncomeExpense(transactions: Transaction[]): { income: number; expens
   let income = 0;
   let expense = 0;
   for (const tx of transactions) {
-    if (tx.amount >= 0) income += tx.amount;
-    else expense += Math.abs(tx.amount);
+    const amount = amountInBase(tx, tx.amount);
+    if (amount >= 0) income = sumMinorUnits(income, amount);
+    else expense = sumMinorUnits(expense, Math.abs(amount));
   }
   return { income, expense };
 }
@@ -132,7 +126,7 @@ export function bucketTotals(transactions: Transaction[], categories: Category[]
 
   for (const slice of expenseByCategory(transactions, categories, month)) {
     const bucket = categoryById.get(slice.categoryId)?.bucket;
-    if (bucket) totals[bucket] += slice.amount;
+    if (bucket) totals[bucket] = sumMinorUnits(totals[bucket], slice.amount);
   }
   return totals;
 }
@@ -145,7 +139,7 @@ export function topPayees(transactions: Transaction[], payees: Payee[], month: s
 
   for (const tx of inMonth(transactions, month)) {
     if (!tx.payeeId || tx.amount >= 0) continue;
-    totals.set(tx.payeeId, (totals.get(tx.payeeId) ?? 0) + Math.abs(tx.amount));
+    totals.set(tx.payeeId, sumMinorUnits(totals.get(tx.payeeId) ?? 0, Math.abs(amountInBase(tx, tx.amount))));
   }
 
   return Array.from(totals.entries())
@@ -165,6 +159,7 @@ export function netWorthSeries(
   transactions: Transaction[],
   monthsBack: number,
   endMonth: string,
+  openingBalancesInBase?: ReadonlyMap<string, number>,
 ): NetWorthPoint[] {
   const points: NetWorthPoint[] = [];
   for (let i = monthsBack - 1; i >= 0; i -= 1) {
@@ -172,8 +167,8 @@ export function netWorthSeries(
     const netWorth = accounts.reduce((sum, account) => {
       const activity = transactions
         .filter((tx) => !tx.deleted && tx.accountId === account.id && transactionMonth(tx.date) <= month)
-        .reduce((accSum, tx) => accSum + tx.amount, 0);
-      return sum + account.openingBalance + activity;
+        .reduce((accSum, tx) => sumMinorUnits(accSum, amountInBase(tx, tx.amount)), 0);
+      return sumMinorUnits(sum, openingBalanceInBase(account, openingBalancesInBase), activity);
     }, 0);
     points.push({ month, netWorth });
   }

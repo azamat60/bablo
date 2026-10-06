@@ -2,6 +2,8 @@ export type AiCategoryContext = {
   id: string;
   name: string;
   kind: 'income' | 'expense';
+  /** Parent group name; gives generic names like "Other" their meaning. */
+  group?: string;
 };
 
 export type AiRequestContext = {

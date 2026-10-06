@@ -1,3 +1,4 @@
+import { profileLifetime } from '@/lib/auth';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/db';
 import { buildRateTable, rateId, type RateTable } from '@/domain/rates';
@@ -38,7 +39,9 @@ export async function refreshRatesIfStale(base: string): Promise<void> {
   if (Date.now() - newest < REFRESH_AFTER_MS) return;
 
   try {
-    const response = await fetch(`${RATES_ENDPOINT}/${encodeURIComponent(base)}`);
+    const response = await fetch(`${RATES_ENDPOINT}/${encodeURIComponent(base)}`, {
+      signal: AbortSignal.any([profileLifetime.signal, AbortSignal.timeout(15_000)]),
+    });
     if (!response.ok) return;
     const payload = (await response.json()) as ErApiResponse;
     if (payload.result !== 'success' || !payload.rates) return;
@@ -50,7 +53,7 @@ export async function refreshRatesIfStale(base: string): Promise<void> {
       .filter(([, value]) => Number.isFinite(value) && value > 0)
       .map(([quote, value]) => ({ id: rateId(base, quote), base, quote, rate: 1 / value, fetchedAt: now }));
 
-    await db.rates.bulkPut(rows);
+    if (!profileLifetime.signal.aborted) await db.rates.bulkPut(rows);
   } catch {
     // Offline, blocked, or malformed: keep whatever we already had.
   }
@@ -60,5 +63,26 @@ export async function refreshRatesIfStale(base: string): Promise<void> {
 export async function currentRate(base: string, currency: string): Promise<number> {
   if (currency === base) return 1;
   const row = await db.rates.get(rateId(base, currency));
-  return row?.rate ?? 1;
+  if (!row || !Number.isFinite(row.rate) || row.rate <= 0)
+    throw new Error(`Нет курса ${currency} к ${base}. Добавьте курс в настройках.`);
+  return row.rate;
+}
+
+export function useOpeningBalancesInBase(base: string) {
+  return useLiveQuery(async () => {
+    const [accounts, rates] = await Promise.all([db.accounts.toArray(), db.rates.toArray()]);
+    const table = buildRateTable(rates, base),
+      balances = new Map<string, number>(),
+      missing = new Set<string>();
+    for (const account of accounts.filter((row) => !row.deleted)) {
+      const rate = table.get(account.currency);
+      if (rate === undefined && account.openingBalance !== 0) missing.add(account.currency);
+      else {
+        const amount = Math.round(account.openingBalance * (rate ?? 1));
+        if (!Number.isSafeInteger(amount)) throw new Error('Небезопасный начальный баланс.');
+        balances.set(account.id, amount);
+      }
+    }
+    return { balances, missing: [...missing] };
+  }, [base]);
 }

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { authenticatedFetch } from '@/lib/auth';
+import { useEffect, useRef, useState } from 'react';
 import { useT } from '@/i18n';
 import type { CategorySlice } from '@/domain/reports';
 import styles from './ReportsPage.module.css';
@@ -13,32 +14,51 @@ type AiInsightCardProps = {
 
 export function AiInsightCard({ month, baseCurrency, totalIncome, totalExpense, byCategory }: AiInsightCardProps) {
   const t = useT();
+  const controllerRef = useRef<AbortController | null>(null);
+  useEffect(
+    () => () => {
+      controllerRef.current?.abort();
+      controllerRef.current = null;
+    },
+    [month],
+  );
   const [summary, setSummary] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const generate = async () => {
+    if (controllerRef.current) return;
+    const controller = new AbortController();
+    controllerRef.current = controller;
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/ai/insights', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          month,
-          baseCurrency,
-          totalIncome,
-          totalExpense,
-          byCategory: byCategory.map((s) => ({ name: s.name, amount: s.amount })),
-        }),
-      });
+      const response = await authenticatedFetch(
+        '/api/ai/insights',
+        {
+          method: 'POST',
+          signal: controller.signal,
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            month,
+            baseCurrency,
+            totalIncome,
+            totalExpense,
+            byCategory: byCategory.map((s) => ({ name: s.name, amount: s.amount })),
+          }),
+        },
+        200_000,
+      );
+      if (controller.signal.aborted) return;
       const body = (await response.json()) as { summary?: string; error?: string };
       if (!response.ok) throw new Error(body.error ?? t.reports.failedInsight);
       setSummary(body.summary ?? '');
     } catch (err) {
+      if (controller.signal.aborted) return;
       setError(err instanceof Error ? err.message : t.reports.failedInsight);
     } finally {
-      setLoading(false);
+      if (controllerRef.current === controller) controllerRef.current = null;
+      if (!controller.signal.aborted) setLoading(false);
     }
   };
 

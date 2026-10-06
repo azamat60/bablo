@@ -32,12 +32,14 @@ export function TextAiPage() {
       </div>
       <div className={styles.body}>
         <textarea
+          maxLength={20_000}
           className={styles.textInput}
           placeholder={t.capture.textPlaceholder}
           value={text}
           onChange={(event) => setText(event.target.value)}
           disabled={analyzing}
         />
+        <span>{text.length} / 20 000</span>
         {analyzing && (
           <>
             <div className={styles.spinner} />

@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAccounts } from '@/db/queries/accounts';
 import { useCategoryGroups } from '@/db/queries/categories';
+import { useOpeningBalancesInBase } from '@/db/queries/rates';
 import { useSettings } from '@/db/queries/settings';
 import { useTransactions } from '@/db/queries/transactions';
 import { db } from '@/db/db';
@@ -28,13 +29,15 @@ export function ReportsPage() {
   const payees = useLiveQuery(() => db.payees.toArray(), []) ?? [];
 
   const currency = settings?.baseCurrency ?? 'USD';
+  const opening = useOpeningBalancesInBase(currency);
   const categories = allGroups.flatMap((g) => g.categories);
 
   const { income, expense } = incomeExpenseTotals(transactions, month);
   const categorySlices = expenseByCategory(transactions, categories, month);
   const buckets = bucketTotals(transactions, categories, month);
   const payeeTotals = topPayees(transactions, payees, month);
-  const netWorthPoints = netWorthSeries(accounts, transactions, 6, month);
+  const netWorthPoints =
+    opening && !opening.missing.length ? netWorthSeries(accounts, transactions, 6, month, opening.balances) : [];
 
   return (
     <div className={styles.root}>
@@ -75,7 +78,11 @@ export function ReportsPage() {
 
       <div className={styles.card}>
         <div className={styles.cardTitle}>{t.reports.netWorth}</div>
-        <NetWorthChart points={netWorthPoints} currency={currency} />
+        {opening?.missing.length ? (
+          <p role="status">Нет курса: {opening.missing.join(', ')}</p>
+        ) : (
+          <NetWorthChart points={netWorthPoints} currency={currency} />
+        )}
       </div>
 
       {payeeTotals.length > 0 && (
@@ -91,6 +98,7 @@ export function ReportsPage() {
       )}
 
       <AiInsightCard
+        key={`${month}:${currency}`}
         month={month}
         baseCurrency={currency}
         totalIncome={income}

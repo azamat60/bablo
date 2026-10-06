@@ -10,8 +10,8 @@ import { AmountText } from '@/components/AmountText';
 import { EmptyState } from '@/components/EmptyState';
 import { PageHeader } from '@/components/PageHeader';
 import { groupTransactionsByDate, matchesFilter, matchesSearch } from '@/domain/transactions';
-import { monthKey, monthLabel, shiftMonth } from '@/domain/budget';
-import { incomeExpenseTotalsInRange } from '@/domain/reports';
+import { amountInBase, sumMinorUnits, monthKey, monthLabel, shiftMonth } from '@/domain/budget';
+import { validDate } from '../../../shared/ledger';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useT } from '@/i18n';
 import type { TransactionFilter } from '@/domain/transactions';
@@ -22,21 +22,42 @@ import styles from './TransactionsPage.module.css';
 export function TransactionsPage() {
   const navigate = useNavigate();
   const t = useT();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const changeUrl = (patch: Record<string, string | undefined>) => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('limit');
+    for (const [key, value] of Object.entries(patch)) {
+      if (value) next.set(key, value);
+      else next.delete(key);
+    }
+    void setSearchParams(next, { replace: true });
+  };
   const settings = useSettings();
   const transactions = useTransactions();
   const categories = useLiveQuery(() => db.categories.toArray(), []);
   const payees = useLiveQuery(() => db.payees.toArray(), []);
-  const [searchInput, setSearchInput] = useState('');
+  const searchInput = searchParams.get('q') ?? '';
   const search = useDebounce(searchInput, 300);
-  const [filter, setFilter] = useState<TransactionFilter>(() => ({
+  const filter: TransactionFilter = {
+    accountId: searchParams.get('account') ?? undefined,
     categoryId: searchParams.get('category') ?? undefined,
-    dateFrom: searchParams.get('from') ?? undefined,
-    dateTo: searchParams.get('to') ?? undefined,
-  }));
+    dateFrom: validDate(searchParams.get('from')) ? searchParams.get('from')! : undefined,
+    dateTo: validDate(searchParams.get('to')) ? searchParams.get('to')! : undefined,
+  };
   const [filterOpen, setFilterOpen] = useState(false);
-  const [month, setMonth] = useState(() => searchParams.get('from')?.slice(0, 7) ?? monthKey());
-  const [selectedDate, setSelectedDate] = useState<string>();
+  const candidateMonth = searchParams.get('month') ?? filter.dateFrom?.slice(0, 7) ?? monthKey();
+  const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(candidateMonth) ? candidateMonth : monthKey();
+  const selectedDate = validDate(searchParams.get('day')) ? searchParams.get('day')! : undefined;
+  const setMonth = (value: string) => changeUrl({ month: value, day: undefined, from: undefined, to: undefined });
+  const setFilter = (value: TransactionFilter) =>
+    changeUrl({
+      account: value.accountId,
+      category: value.categoryId,
+      from: value.dateFrom,
+      to: value.dateTo,
+      day: undefined,
+    });
+  const limit = Math.max(100, Math.min(10000, Number(searchParams.get('limit')) || 100));
 
   const currency = settings?.baseCurrency ?? 'USD';
   const categoryNameById = useMemo(() => new Map((categories ?? []).map((c) => [c.id, c.name])), [categories]);
@@ -44,15 +65,18 @@ export function TransactionsPage() {
 
   const filtered = transactions.filter((tx) => {
     if (!matchesFilter(tx, filter)) return false;
+    if (!filter.dateFrom && !filter.dateTo && !tx.date.startsWith(month)) return false;
     if (selectedDate && tx.date !== selectedDate) return false;
     const categoryName = tx.categoryId ? (categoryNameById.get(tx.categoryId) ?? '') : '';
     const payeeName = tx.payeeId ? (payeeNameById.get(tx.payeeId) ?? '') : '';
     return matchesSearch(tx, search, categoryName, payeeName);
   });
 
-  const groups = groupTransactionsByDate(filtered);
+  const groups = groupTransactionsByDate(filtered.slice(0, limit));
   const hasActiveFilter = Boolean(filter.accountId || filter.categoryId || filter.dateFrom || filter.dateTo);
-  const { income, expense } = incomeExpenseTotalsInRange(transactions, { kind: 'month', anchor: `${month}-01` });
+  const counted = filtered.filter((tx) => !tx.transferId);
+  const income = sumMinorUnits(...counted.filter((tx) => tx.amount > 0).map((tx) => amountInBase(tx, tx.amount)));
+  const expense = sumMinorUnits(...counted.filter((tx) => tx.amount < 0).map((tx) => -amountInBase(tx, tx.amount)));
 
   return (
     <div className={styles.root}>
@@ -63,7 +87,7 @@ export function TransactionsPage() {
           className={styles.searchInput}
           placeholder={t.transactionsPage.search}
           value={searchInput}
-          onChange={(event) => setSearchInput(event.target.value)}
+          onChange={(event) => changeUrl({ q: event.target.value || undefined })}
         />
         <button type="button" className={styles.filterButton} onClick={() => setFilterOpen(true)}>
           <SlidersHorizontal size={18} aria-hidden="true" />
@@ -77,7 +101,6 @@ export function TransactionsPage() {
           className={styles.monthArrow}
           onClick={() => {
             setMonth(shiftMonth(month, -1));
-            setSelectedDate(undefined);
           }}
         >
           <ChevronLeft size={18} aria-hidden="true" />
@@ -88,7 +111,6 @@ export function TransactionsPage() {
           className={styles.monthArrow}
           onClick={() => {
             setMonth(shiftMonth(month, 1));
-            setSelectedDate(undefined);
           }}
         >
           <ChevronRight size={18} aria-hidden="true" />
@@ -99,7 +121,7 @@ export function TransactionsPage() {
         month={month}
         transactions={transactions}
         selectedDate={selectedDate}
-        onSelectDate={(date) => setSelectedDate((current) => (current === date ? undefined : date))}
+        onSelectDate={(date) => changeUrl({ day: selectedDate === date ? undefined : date })}
       />
 
       <div className={styles.summaryRow}>
@@ -109,7 +131,13 @@ export function TransactionsPage() {
       </div>
 
       {groups.length === 0 ? (
-        <EmptyState label={t.transactionsPage.empty} />
+        <EmptyState
+          label={
+            transactions.length && (hasActiveFilter || search || selectedDate)
+              ? 'Ничего не найдено по фильтрам'
+              : t.transactionsPage.empty
+          }
+        />
       ) : (
         groups.map((group) => (
           <div key={group.date}>
@@ -128,6 +156,11 @@ export function TransactionsPage() {
         ))
       )}
 
+      {filtered.length > limit && (
+        <button type="button" onClick={() => changeUrl({ limit: String(limit + 100) })}>
+          Показать ещё ({filtered.length - limit})
+        </button>
+      )}
       <TransactionFilterSheet
         open={filterOpen}
         onClose={() => setFilterOpen(false)}

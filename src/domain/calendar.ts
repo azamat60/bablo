@@ -1,4 +1,5 @@
 import { addDays, endOfMonth, endOfWeek, format, isToday, startOfWeek } from 'date-fns';
+import { amountInBase, sumMinorUnits } from './budget';
 import type { Transaction } from '@/db/types';
 
 export type DayTotal = { income: number; expense: number };
@@ -8,8 +9,9 @@ export function dailyTotals(transactions: Transaction[]): Map<string, DayTotal> 
   for (const tx of transactions) {
     if (tx.deleted || tx.transferId) continue;
     const entry = totals.get(tx.date) ?? { income: 0, expense: 0 };
-    if (tx.amount >= 0) entry.income += tx.amount;
-    else entry.expense += Math.abs(tx.amount);
+    const amount = amountInBase(tx, tx.amount);
+    if (amount >= 0) entry.income = sumMinorUnits(entry.income, amount);
+    else entry.expense = sumMinorUnits(entry.expense, Math.abs(amount));
     totals.set(tx.date, entry);
   }
   return totals;

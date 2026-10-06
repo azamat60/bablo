@@ -1,3 +1,4 @@
+import { checkedMinorUnits, sumMinorUnits } from './budget';
 import type { Rate } from '@/db/types';
 
 /**
@@ -34,7 +35,8 @@ export function rateFor(table: RateTable, currency: string): number | undefined 
 /** Converts a minor-unit amount into base currency, or undefined if unknown. */
 export function toBase(amountMinor: number, currency: string, table: RateTable): number | undefined {
   const rate = rateFor(table, currency);
-  return rate === undefined ? undefined : Math.round(amountMinor * rate);
+  checkedMinorUnits(amountMinor);
+  return rate === undefined ? undefined : checkedMinorUnits(Math.round(amountMinor * rate));
 }
 
 export type ConversionSummary = {
@@ -56,7 +58,7 @@ export function sumInBase(
   for (const entry of entries) {
     const converted = toBase(entry.amountMinor, entry.currency, table);
     if (converted === undefined) missing.add(entry.currency);
-    else total += converted;
+    else total = sumMinorUnits(total, converted);
   }
   return { total, missing: [...missing] };
 }

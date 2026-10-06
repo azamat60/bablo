@@ -68,7 +68,7 @@ export function ComposerAiBar({ groupId, memo, disabled, onResult }: ComposerAiB
 
   const analyzing = voice.status === 'analyzing' || photo.status === 'analyzing' || text.status === 'analyzing';
   const queued = voice.status === 'queued' || photo.status === 'queued' || text.status === 'queued';
-  const busy = analyzing || queued;
+  const busy = analyzing || queued || voice.status === 'requesting' || voice.status === 'stopping';
   const recording = voice.status === 'recording';
   const error = voice.error ?? photo.error ?? text.error;
   const statusText =
@@ -173,6 +173,7 @@ export function ComposerAiBar({ groupId, memo, disabled, onResult }: ComposerAiB
       {mode === 'text' && !busy && (
         <>
           <textarea
+            maxLength={20_000}
             ref={textRef}
             className={styles.textArea}
             placeholder={t.capture.textPlaceholder}

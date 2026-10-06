@@ -2,8 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '@/db/db';
 import { newMeta, touchMeta } from '@/db/meta';
-import { currentRate } from './rates';
-import { buildRateTable, toBase } from '@/domain/rates';
+import { buildRateTable, rateId, toBase } from '@/domain/rates';
 import type { Transaction, TransactionSource, TransactionSplit } from '@/db/types';
 
 export type TransactionFilter = {
@@ -125,29 +124,119 @@ export type NewTransactionInput = {
   aiConfidence?: number;
 };
 
+const WRITE_TABLES = [db.transactions, db.accounts, db.categories, db.categoryGroups, db.payees, db.rates, db.settings];
+const MAX_MINOR = BigInt(Number.MAX_SAFE_INTEGER);
+
+function assertMoney(amount: number, allowZero = false): void {
+  if (!Number.isSafeInteger(amount) || (!allowZero && amount === 0)) {
+    throw new Error('Сумма должна быть безопасным целым числом тыйынов.');
+  }
+}
+
+function assertDate(date: string): void {
+  const parsed = new Date(`${date}T00:00:00.000Z`);
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+    !Number.isFinite(parsed.getTime()) ||
+    parsed.toISOString().slice(0, 10) !== date
+  ) {
+    throw new Error('Укажите существующую дату в формате YYYY-MM-DD.');
+  }
+}
+
+async function assertAccount(accountId: string, currency: string): Promise<void> {
+  const account = await db.accounts.get(accountId);
+  if (!account || account.deleted || account.archived) throw new Error('Выберите доступный счёт.');
+  if (currency !== account.currency) throw new Error('Валюта операции должна совпадать с валютой счёта.');
+}
+
+async function checkedRate(base: string, currency: string): Promise<number> {
+  if (base === currency) return 1;
+  const rate = (await db.rates.get(rateId(base, currency)))?.rate;
+  if (rate === undefined || !Number.isFinite(rate) || rate <= 0) {
+    throw new Error(`Нет курса ${currency} к ${base}. Добавьте курс в настройках.`);
+  }
+  return rate;
+}
+
+async function assertInput(input: NewTransactionInput): Promise<void> {
+  assertMoney(input.amount);
+  assertDate(input.date);
+  await assertAccount(input.accountId, input.currency);
+  if (input.splits && input.splits.length > 0) {
+    let sum = 0n;
+    for (const split of input.splits) {
+      if (!split.categoryId) throw new Error('Выберите категорию каждой части суммы.');
+      assertMoney(split.amount);
+      if (Math.sign(split.amount) !== Math.sign(input.amount)) throw new Error('Части суммы имеют разное направление.');
+      sum += BigInt(split.amount);
+    }
+    if (sum !== BigInt(input.amount)) throw new Error('Сумма частей должна совпадать с суммой операции.');
+  }
+  const categoryIds = input.splits?.length ? input.splits.map((split) => split.categoryId) : [input.categoryId];
+  for (const id of categoryIds) {
+    if (!id) continue;
+    const category = await db.categories.get(id);
+    if (!category || category.deleted || category.archived) throw new Error('Выберите доступную категорию.');
+    const group = await db.categoryGroups.get(category.groupId);
+    if (!group || group.deleted || group.archived || group.kind !== (input.amount > 0 ? 'income' : 'expense'))
+      throw new Error('Категория не соответствует направлению операции.');
+  }
+  if (input.payeeId && !(await db.payees.get(input.payeeId))) throw new Error('Получатель не найден.');
+  if (
+    input.aiConfidence !== undefined &&
+    (!Number.isFinite(input.aiConfidence) || input.aiConfidence < 0 || input.aiConfidence > 1)
+  ) {
+    throw new Error('Неверная оценка распознавания.');
+  }
+}
+
+function absoluteMinor(amount: number): bigint {
+  assertMoney(amount, true);
+  return BigInt(Math.abs(amount));
+}
+
+async function assertSafeLedger(changes: Transaction[], replacedIds: string[] = []): Promise<void> {
+  const replaced = new Set(replacedIds);
+  const [accounts, existing] = await Promise.all([db.accounts.toArray(), db.transactions.toArray()]);
+  const transactions = [...existing.filter((tx) => !replaced.has(tx.id)), ...changes].filter((tx) => !tx.deleted);
+  let nativeTotal = accounts
+    .filter((account) => !account.deleted)
+    .reduce((sum, account) => sum + absoluteMinor(account.openingBalance), 0n);
+  let baseTotal = nativeTotal;
+  for (const tx of transactions) {
+    nativeTotal += absoluteMinor(tx.amount);
+    if (!Number.isFinite(tx.rate) || tx.rate <= 0) throw new Error('Неверный курс операции.');
+    baseTotal += absoluteMinor(Math.round(tx.amount * tx.rate));
+  }
+  if (nativeTotal > MAX_MINOR || baseTotal > MAX_MINOR)
+    throw new Error('Общая сумма бюджета превышает безопасную точность.');
+}
+
+function nextMeta(transaction: Transaction) {
+  if (!Number.isSafeInteger(transaction.rev) || transaction.rev < 1 || transaction.rev >= Number.MAX_SAFE_INTEGER) {
+    throw new Error('Невозможно увеличить версию операции.');
+  }
+  return touchMeta(transaction.rev);
+}
+
 export async function createTransaction(input: NewTransactionInput): Promise<string> {
-  // Stamped at write time so historical figures are not rewritten when rates
-  // move later.
-  const base = (await db.settings.get('singleton'))?.baseCurrency ?? input.currency;
-  const transaction: Transaction = {
-    ...newMeta(),
-    accountId: input.accountId,
-    date: input.date,
-    amount: input.amount,
-    currency: input.currency,
-    rate: await currentRate(base, input.currency),
-    categoryId: input.categoryId,
-    payeeId: input.payeeId,
-    memo: input.memo,
-    cleared: true,
-    splits: input.splits,
-    tags: [],
-    attachmentIds: [],
-    source: input.source ?? 'manual',
-    aiConfidence: input.aiConfidence,
-  };
-  await db.transactions.add(transaction);
-  return transaction.id;
+  return db.transaction('rw', WRITE_TABLES, async () => {
+    await assertInput(input);
+    const base = (await db.settings.get('singleton'))?.baseCurrency ?? input.currency;
+    const transaction: Transaction = {
+      ...newMeta(),
+      ...input,
+      rate: await checkedRate(base, input.currency),
+      cleared: true,
+      tags: [],
+      attachmentIds: [],
+      source: input.source ?? 'manual',
+    };
+    await assertSafeLedger([transaction]);
+    await db.transactions.add(transaction);
+    return transaction.id;
+  });
 }
 
 export type NewTransferInput = {
@@ -160,64 +249,126 @@ export type NewTransferInput = {
   memo?: string;
 };
 
-export async function createTransfer(input: NewTransferInput): Promise<void> {
-  const transferId = uuidv4();
-  const now = Date.now();
+type TransferPair = { outgoing: Transaction; incoming: Transaction };
+
+async function transferPair(transaction: Transaction): Promise<TransferPair> {
+  if (!transaction.transferId) throw new Error('Операция не является переводом.');
+  const rows = await db.transactions.where('transferId').equals(transaction.transferId).toArray();
+  const outgoing = rows.find((tx) => tx.amount < 0);
+  const incoming = rows.find((tx) => tx.amount > 0);
+  if (
+    rows.length !== 2 ||
+    !outgoing ||
+    !incoming ||
+    outgoing.accountId === incoming.accountId ||
+    outgoing.deleted !== incoming.deleted
+  ) {
+    throw new Error('Перевод повреждён: проверьте обе стороны операции.');
+  }
+  return { outgoing, incoming };
+}
+
+async function buildTransfer(input: NewTransferInput, previous?: TransferPair): Promise<TransferPair> {
+  assertMoney(input.amount);
+  if (input.amount < 0) throw new Error('Сумма перевода должна быть положительной.');
+  assertDate(input.date);
+  if (input.fromAccountId === input.toAccountId) throw new Error('Выберите разные счета для перевода.');
+  await assertAccount(input.fromAccountId, input.fromCurrency);
+  await assertAccount(input.toAccountId, input.toCurrency);
   const base = (await db.settings.get('singleton'))?.baseCurrency ?? input.fromCurrency;
-  const [fromRate, toRate] = await Promise.all([
-    currentRate(base, input.fromCurrency),
-    currentRate(base, input.toCurrency),
-  ]);
+  const fromRate =
+    previous?.outgoing.currency === input.fromCurrency
+      ? previous.outgoing.rate
+      : await checkedRate(base, input.fromCurrency);
+  const toRate =
+    previous?.incoming.currency === input.toCurrency
+      ? previous.incoming.rate
+      : await checkedRate(base, input.toCurrency);
+  if (![fromRate, toRate].every((rate) => Number.isFinite(rate) && rate > 0))
+    throw new Error('Неверный курс перевода.');
+  const received =
+    input.fromCurrency === input.toCurrency ? input.amount : Math.round((input.amount * fromRate) / toRate);
+  assertMoney(received);
+  if (received < 0) throw new Error('Неверная сумма получателя.');
+  const transferId = previous?.outgoing.transferId ?? uuidv4();
+  const common = { date: input.date, memo: input.memo, cleared: true, transferId, deleted: false };
   const outgoing: Transaction = {
-    id: uuidv4(),
-    updatedAt: now,
-    rev: 1,
-    deleted: false,
+    ...(previous?.outgoing ?? { ...newMeta(), tags: [], attachmentIds: [], source: 'manual' as const }),
+    ...(previous ? nextMeta(previous.outgoing) : {}),
+    ...common,
     accountId: input.fromAccountId,
-    date: input.date,
     amount: -input.amount,
     currency: input.fromCurrency,
     rate: fromRate,
-    memo: input.memo,
-    cleared: true,
-    transferId,
-    tags: [],
-    attachmentIds: [],
-    source: 'manual',
   };
   const incoming: Transaction = {
-    id: uuidv4(),
-    updatedAt: now,
-    rev: 1,
-    deleted: false,
+    ...(previous?.incoming ?? { ...newMeta(), tags: [], attachmentIds: [], source: 'manual' as const }),
+    ...(previous ? nextMeta(previous.incoming) : {}),
+    ...common,
     accountId: input.toAccountId,
-    date: input.date,
-    amount: input.amount,
+    amount: received,
     currency: input.toCurrency,
     rate: toRate,
-    memo: input.memo,
-    cleared: true,
-    transferId,
-    tags: [],
-    attachmentIds: [],
-    source: 'manual',
   };
-  await db.transactions.bulkAdd([outgoing, incoming]);
+  return { outgoing, incoming };
+}
+
+export async function createTransfer(input: NewTransferInput): Promise<void> {
+  await db.transaction('rw', WRITE_TABLES, async () => {
+    const pair = await buildTransfer(input);
+    await assertSafeLedger([pair.outgoing, pair.incoming]);
+    await db.transactions.bulkAdd([pair.outgoing, pair.incoming]);
+  });
+}
+
+export async function updateTransfer(id: string, input: NewTransferInput): Promise<void> {
+  await db.transaction('rw', WRITE_TABLES, async () => {
+    const transaction = await db.transactions.get(id);
+    if (!transaction || transaction.deleted) throw new Error('Перевод больше недоступен.');
+    const previous = await transferPair(transaction);
+    const pair = await buildTransfer(input, previous);
+    await assertSafeLedger([pair.outgoing, pair.incoming], [previous.outgoing.id, previous.incoming.id]);
+    await db.transactions.bulkPut([pair.outgoing, pair.incoming]);
+  });
 }
 
 export async function updateTransaction(id: string, patch: Partial<NewTransactionInput>): Promise<void> {
-  const transaction = await db.transactions.get(id);
-  if (!transaction) return;
-  await db.transactions.update(id, { ...patch, ...touchMeta(transaction.rev) });
+  await db.transaction('rw', WRITE_TABLES, async () => {
+    const transaction = await db.transactions.get(id);
+    if (!transaction || transaction.deleted) throw new Error('Операция больше недоступна.');
+    if (transaction.transferId) throw new Error('Редактируйте обе стороны перевода вместе.');
+    const input = { ...transaction, ...patch, source: patch.source ?? transaction.source };
+    await assertInput(input);
+    const base = (await db.settings.get('singleton'))?.baseCurrency ?? input.currency;
+    const rate = input.currency === transaction.currency ? transaction.rate : await checkedRate(base, input.currency);
+    const updated = { ...input, rate, ...nextMeta(transaction) };
+    await assertSafeLedger([updated], [id]);
+    await db.transactions.put(updated);
+  });
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
-  const transaction = await db.transactions.get(id);
-  if (!transaction) return;
-  if (transaction.transferId) {
-    const pair = await db.transactions.where('transferId').equals(transaction.transferId).toArray();
-    await db.transactions.bulkDelete(pair.map((tx) => tx.id));
-    return;
-  }
-  await db.transactions.delete(id);
+  await db.transaction('rw', db.transactions, async () => {
+    const transaction = await db.transactions.get(id);
+    if (!transaction || transaction.deleted) return;
+    const pair = transaction.transferId ? await transferPair(transaction) : undefined;
+    const rows = pair ? [pair.outgoing, pair.incoming] : [transaction];
+    await db.transactions.bulkPut(rows.map((tx) => ({ ...tx, deleted: true, ...nextMeta(tx) })));
+  });
+}
+
+export async function restoreTransaction(id: string): Promise<void> {
+  await db.transaction('rw', WRITE_TABLES, async () => {
+    const transaction = await db.transactions.get(id);
+    if (!transaction?.deleted) return;
+    const pair = transaction.transferId ? await transferPair(transaction) : undefined;
+    const rows = pair ? [pair.outgoing, pair.incoming] : [transaction];
+    const restored = rows.map((tx) => ({ ...tx, deleted: false, ...nextMeta(tx) }));
+    for (const tx of restored) await assertInput(tx);
+    await assertSafeLedger(
+      restored,
+      rows.map((tx) => tx.id),
+    );
+    await db.transactions.bulkPut(restored);
+  });
 }

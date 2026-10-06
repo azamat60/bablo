@@ -9,6 +9,7 @@ type ApiModule = {
 };
 
 const API_ROUTES: Record<string, string> = {
+  '/api/budget': '/api/budget.ts',
   '/api/ai/receipt': '/api/ai/receipt.ts',
   '/api/ai/voice': '/api/ai/voice.ts',
   '/api/ai/text': '/api/ai/text.ts',
@@ -18,13 +19,16 @@ const API_ROUTES: Record<string, string> = {
 
 async function readBody(req: IncomingMessage): Promise<Buffer> {
   const chunks: Buffer[] = [];
+  let bytes = 0;
   for await (const chunk of req) {
     chunks.push(chunk as Buffer);
+    if ((bytes += (chunk as Buffer).length) > 12 * 1024 * 1024)
+      throw Object.assign(new Error('Превышен размер запроса.'), { status: 413 });
   }
   return Buffer.concat(chunks);
 }
 
-function toWebRequest(req: IncomingMessage, body: Buffer): Request {
+function toWebRequest(req: IncomingMessage, body: Buffer, signal: AbortSignal): Request {
   const url = `http://${req.headers.host ?? 'localhost'}${req.url ?? ''}`;
   const headers = new Headers();
   for (const [key, value] of Object.entries(req.headers)) {
@@ -35,6 +39,7 @@ function toWebRequest(req: IncomingMessage, body: Buffer): Request {
   return new Request(url, {
     method: req.method,
     headers,
+    signal,
     body: hasBody ? body : undefined,
   });
 }
@@ -62,14 +67,18 @@ async function handleApiRequest(
       return;
     }
     const body = await readBody(req);
-    const webReq = toWebRequest(req, body);
+    const lifetime = new AbortController();
+    req.once('aborted', () => lifetime.abort());
+    res.once('close', () => lifetime.abort());
+    const webReq = toWebRequest(req, body, lifetime.signal);
     const webRes = await handler(webReq);
     await sendWebResponse(res, webRes);
   } catch (err) {
     server.ssrFixStacktrace(err as Error);
     console.error('[api-dev]', err);
-    res.statusCode = 500;
-    res.end(JSON.stringify({ error: (err as Error).message }));
+    res.statusCode = (err as { status?: number }).status ?? 500;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ error: 'Не удалось выполнить запрос.' }));
   }
 }
 

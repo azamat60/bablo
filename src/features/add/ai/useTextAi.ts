@@ -19,7 +19,7 @@ export function useTextAi(options?: AiContextOptions): TextAi {
     async (text: string) => {
       const trimmed = text.trim();
       if (!trimmed) return;
-      await parse.submit(async () => ({ draft: await parseText(trimmed, optionsRef.current) }), {
+      await parse.submit(async (signal) => ({ draft: await parseText(trimmed, { ...optionsRef.current, signal }) }), {
         inputText: trimmed,
       });
     },

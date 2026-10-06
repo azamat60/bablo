@@ -40,7 +40,7 @@ export function usePhotoCapture(options: PhotoCaptureOptions = {}): PhotoCapture
       const dataUrl = await downscaleImageToDataUrl(file);
       setPreview(dataUrl);
       const { caption, ...context } = optionsRef.current;
-      await parse.submit(async () => ({ draft: await parseReceipt(dataUrl, caption, context) }), {
+      await parse.submit(async (signal) => ({ draft: await parseReceipt(dataUrl, caption, { ...context, signal }) }), {
         inputText: dataUrl,
       });
     },
