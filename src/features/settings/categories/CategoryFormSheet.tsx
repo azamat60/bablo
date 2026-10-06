@@ -3,7 +3,8 @@ import { Sheet } from '@/components/Sheet';
 import { AppIcon } from '@/components/AppIcon';
 import { archiveCategory, createCategory, deleteCategoryIfUnused, updateCategory } from '@/db/queries/categories';
 import { DEFAULT_ICON_KEY, ICON_KEYS } from '@/lib/icons';
-import { useT } from '@/i18n';
+import { useLocale, useT } from '@/i18n';
+import { categorySuggestions, useCategoryRecommendations } from '@/db/queries/categoryRecommendations';
 import type { Bucket, Category, CategoryGroup } from '@/db/types';
 import { BUCKET_LABEL_KEY, BUCKET_OPTIONS } from './CategoriesPage.constants';
 import styles from './CategoryFormSheet.module.css';
@@ -17,6 +18,8 @@ type CategoryFormSheetProps = {
 
 export function CategoryFormSheet({ open, onClose, group, category }: CategoryFormSheetProps) {
   const t = useT();
+  const recommendations = useCategoryRecommendations(useLocale());
+  const suggestions = categorySuggestions(group, recommendations ?? []);
   const [name, setName] = useState(category?.name ?? '');
   const [icon, setIcon] = useState(category?.icon ?? DEFAULT_ICON_KEY);
   const [bucket, setBucket] = useState<Bucket | undefined>(category?.bucket ?? group.bucket ?? 'needs');
@@ -70,6 +73,27 @@ export function CategoryFormSheet({ open, onClose, group, category }: CategoryFo
       onClose={resetAndClose}
       title={isEditing ? t.categoryForm.editTitle : t.categoryForm.addTitle(group.name)}
     >
+      {!isEditing && suggestions.length > 0 && (
+        <div className={styles.field}>
+          <span className={styles.label}>{t.categoriesPage.recommended}</span>
+          <div className={styles.suggestions}>
+            {suggestions.map((item) => (
+              <button
+                type="button"
+                key={item.id}
+                onClick={() => {
+                  setName(item.category.name);
+                  setIcon(item.category.icon);
+                  setBucket(item.category.bucket);
+                }}
+              >
+                <AppIcon name={item.category.icon} size={16} />
+                {item.category.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div className={styles.field}>
         <label className={styles.label} htmlFor="category-name">
           {t.categoryForm.name}

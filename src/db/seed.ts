@@ -260,8 +260,12 @@ function translateGroup(group: SeedGroup, locale: Locale): SeedGroup {
   };
 }
 
+export function getCategoryPreset(preset: CategoryPreset, locale: Locale = 'ru') {
+  return PRESET_GROUPS[preset].map((group) => translateGroup(group, locale));
+}
+
 export async function seedCategoriesForPreset(preset: CategoryPreset, locale: Locale = 'ru'): Promise<void> {
-  await seedGroups(PRESET_GROUPS[preset].map((group) => translateGroup(group, locale)));
+  await seedGroups(getCategoryPreset(preset, locale));
 }
 
 export async function seedStarterCategories(): Promise<void> {

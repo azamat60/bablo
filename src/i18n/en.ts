@@ -428,6 +428,11 @@ export const en = {
     languageEn: 'English',
   },
   categoriesPage: {
+    recommended: 'Recommended categories',
+    recommendedHint: 'Choose what you need to add to your existing set.',
+    addRecommended: (n: number) => `Add ${n} categories`,
+    allRecommendedAdded: 'All recommendations are already in your set.',
+    recommendFailed: 'Could not add categories. Try again.',
     back: 'Back',
     title: 'Categories',
     addCategory: 'Add category',

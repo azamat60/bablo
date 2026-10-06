@@ -1,0 +1,54 @@
+.hint {
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+.actions {
+  display: flex;
+  gap: var(--space-4);
+  color: var(--color-primary);
+}
+.actions button {
+  min-height: 44px;
+}
+.group {
+  margin: var(--space-3) 0;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.group legend {
+  padding: 0 var(--space-2);
+  font-size: 14px;
+  font-weight: 700;
+}
+.row {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+}
+.row input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-primary);
+  flex-shrink: 0;
+}
+.row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.save {
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  font-weight: 700;
+}
+.save:disabled {
+  opacity: 0.5;
+}

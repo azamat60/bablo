@@ -30,15 +30,22 @@ export async function initializeAuth() {
 }
 export async function signIn() {
   if (!supabase) throw new Error('Google-вход пока не настроен.');
-  const { error } = await supabase.auth.signInWithOAuth({
+  const installed =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
       redirectTo: `${location.origin}/auth/callback`,
+      skipBrowserRedirect: true,
       scopes: 'openid email profile',
       queryParams: { prompt: 'select_account' },
     },
   });
   if (error) throw error;
+  if (!data.url) throw new Error('Не удалось начать Google-вход. Повторите попытку.');
+  if (installed && window.open(data.url, '_self')) return;
+  location.assign(data.url);
 }
 export async function signOut() {
   profileLifetime.abort();

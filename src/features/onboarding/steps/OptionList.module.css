@@ -57,3 +57,25 @@
   color: var(--color-primary);
   flex-shrink: 0;
 }
+
+.preview {
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.preview h2 {
+  font-size: 16px;
+  margin: 0 0 var(--space-4);
+}
+.preview h3 {
+  font-size: 14px;
+  margin: var(--space-3) 0 var(--space-1);
+}
+.preview p {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  margin: 0;
+}

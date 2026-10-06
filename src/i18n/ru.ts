@@ -430,6 +430,11 @@ export const ru: Dictionary = {
     languageEn: 'English',
   },
   categoriesPage: {
+    recommended: 'Рекомендуемые категории',
+    recommendedHint: 'Выберите нужные категории, чтобы дополнить свой набор.',
+    addRecommended: (n: number) => `Добавить ${n} ${pluralRu(n, ['категорию', 'категории', 'категорий'])}`,
+    allRecommendedAdded: 'Все рекомендации уже есть в вашем наборе.',
+    recommendFailed: 'Не удалось добавить категории. Повторите попытку.',
     back: 'Назад',
     title: 'Категории',
     addCategory: 'Добавить категорию',
