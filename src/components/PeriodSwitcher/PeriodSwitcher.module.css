@@ -1,15 +1,8 @@
 .root {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
+  display: contents;
 }
 
 .kindSelect {
-  display: flex;
-  align-items: center;
-  gap: 2px;
   font-size: 15px;
   font-weight: 700;
   color: var(--color-primary);
@@ -18,47 +11,43 @@
   appearance: none;
   -webkit-appearance: none;
   padding-right: var(--space-1);
+  min-width: 0;
+  max-width: 100%;
 }
-
 .kindSelectWrap {
-  position: relative;
+  grid-area: period;
   display: flex;
   align-items: center;
+  min-width: 0;
 }
-
 .chevron {
   color: var(--color-primary);
   pointer-events: none;
+  flex-shrink: 0;
 }
-
 .rangeNav {
+  grid-area: range;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  justify-content: center;
+  min-width: 0;
 }
-
 .rangeArrow {
-  width: 28px;
-  height: 28px;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
   border-radius: var(--radius-pill);
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--color-text-muted);
 }
-
 .rangeLabel {
   font-size: 14px;
   font-weight: 600;
-  min-width: 96px;
+  min-width: 0;
   text-align: center;
-}
-
-@media (max-width: 360px) {
-  .rangeNav {
-    gap: 0;
-  }
-  .rangeLabel {
-    min-width: 74px;
-  }
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

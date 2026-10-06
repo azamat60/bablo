@@ -7,6 +7,7 @@ import { useT } from '@/i18n';
 import type { Category, CategoryGroup } from '@/db/types';
 import { CategoryFormSheet } from './CategoryFormSheet';
 import { GroupFormSheet } from './GroupFormSheet';
+import { RecommendedCategoriesSheet } from './RecommendedCategoriesSheet';
 import { BUCKET_LABEL_KEY } from './CategoriesPage.constants';
 import styles from './CategoriesPage.module.css';
 
@@ -18,6 +19,7 @@ export function CategoriesPage() {
   const t = useT();
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
   const [addingGroup, setAddingGroup] = useState(false);
+  const [recommendations, setRecommendations] = useState(false);
 
   return (
     <div className={styles.root}>
@@ -26,6 +28,9 @@ export function CategoriesPage() {
         {t.categoriesPage.back}
       </button>
       <h1 className={styles.title}>{t.categoriesPage.title}</h1>
+      <button type="button" className={styles.recommended} onClick={() => setRecommendations(true)}>
+        {t.categoriesPage.recommended}
+      </button>
       {groups.map((group) => (
         <div className={styles.group} key={group.id}>
           <div className={styles.groupHeader}>
@@ -74,6 +79,7 @@ export function CategoriesPage() {
         />
       )}
       <GroupFormSheet open={addingGroup} onClose={() => setAddingGroup(false)} />
+      {recommendations && <RecommendedCategoriesSheet onClose={() => setRecommendations(false)} />}
     </div>
   );
 }
