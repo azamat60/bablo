@@ -1,6 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks';
+import { Trash2 } from 'lucide-react';
 import { db } from '@/db/db';
 import { AppIcon } from '@/components/AppIcon';
+import { useDeletion } from '@/components/DeletionProvider';
 import { formatMoney } from '@/domain/money';
 import { useT } from '@/i18n';
 import type { Transaction } from '@/db/types';
@@ -23,6 +25,7 @@ function categoryPath(groupName?: string, categoryName?: string): string | undef
 
 export function TransactionRow({ transaction, showAccount, onClick }: TransactionRowProps) {
   const t = useT();
+  const { requestTransactionDeletion } = useDeletion();
   const category = useLiveQuery(
     () => (transaction.categoryId ? db.categories.get(transaction.categoryId) : undefined),
     [transaction.categoryId],
@@ -52,13 +55,25 @@ export function TransactionRow({ transaction, showAccount, onClick }: Transactio
   const amountClass = transaction.amount < 0 ? styles.expense : styles.income;
 
   return (
-    <button type="button" className={styles.row} onClick={onClick}>
-      <AppIcon name={icon} size={20} className={styles.icon} />
-      <span className={styles.body}>
-        <span className={styles.title}>{title}</span>
-        {subtitle && <span className={styles.subtitle}>{subtitle}</span>}
-      </span>
-      <span className={`${styles.amount} ${amountClass}`}>{formatMoney(transaction.amount, transaction.currency)}</span>
-    </button>
+    <div className={styles.row}>
+      <button type="button" className={styles.main} onClick={onClick}>
+        <AppIcon name={icon} size={20} className={styles.icon} />
+        <span className={styles.body}>
+          <span className={styles.title}>{title}</span>
+          {subtitle && <span className={styles.subtitle}>{subtitle}</span>}
+        </span>
+        <span className={`${styles.amount} ${amountClass}`}>
+          {formatMoney(transaction.amount, transaction.currency)}
+        </span>
+      </button>
+      <button
+        type="button"
+        className={styles.delete}
+        aria-label={t.deletion.transactionAria(title)}
+        onClick={() => requestTransactionDeletion(transaction.id)}
+      >
+        <Trash2 size={16} aria-hidden="true" />
+      </button>
+    </div>
   );
 }

@@ -3,10 +3,9 @@ import { useNavigate } from 'react-router';
 import { X } from 'lucide-react';
 import { Sheet } from '@/components/Sheet';
 import { AppIcon } from '@/components/AppIcon';
+import { useDeletion } from '@/components/DeletionProvider';
 import {
-  archiveCategoryGroup,
   createCategory,
-  deleteCategoryIfUnused,
   updateCategory,
   updateCategoryGroup,
   type CategoryGroupWithCategories,
@@ -38,6 +37,7 @@ export function GroupEditSheet({ open, group, onClose }: GroupEditSheetProps) {
 function GroupEditForm({ group, onClose }: Omit<GroupEditSheetProps, 'open'>) {
   const t = useT();
   const navigate = useNavigate();
+  const { requestCategoryDeletion, requestCategoryGroupDeletion } = useDeletion();
   const [name, setName] = useState(group.name);
   const [icon, setIcon] = useState(() => groupIcon(group, group.categories));
   const [color, setColor] = useState(group.color);
@@ -49,7 +49,12 @@ function GroupEditForm({ group, onClose }: Omit<GroupEditSheetProps, 'open'>) {
 
   const updateRow = (index: number, value: string) =>
     setRows((current) => current.map((row, i) => (i === index ? { ...row, name: value } : row)));
-  const removeRow = (index: number) => setRows((current) => current.filter((_, i) => i !== index));
+  const removeRow = (index: number) => {
+    const row = rows[index];
+    if (row?.id) {
+      requestCategoryDeletion(row.id, () => setRows((current) => current.filter((item) => item.id !== row.id)));
+    } else setRows((current) => current.filter((_, i) => i !== index));
+  };
   const addRow = () => setRows((current) => [...current, { name: '' }]);
 
   const handleSave = async () => {
@@ -58,10 +63,6 @@ function GroupEditForm({ group, onClose }: Omit<GroupEditSheetProps, 'open'>) {
 
     await updateCategoryGroup(group.id, { name: name.trim(), icon, color });
 
-    const keptIds = new Set(rows.map((row) => row.id).filter(Boolean));
-    for (const category of group.categories) {
-      if (!category.archived && !keptIds.has(category.id)) await deleteCategoryIfUnused(category.id);
-    }
     for (const row of rows) {
       const trimmed = row.name.trim();
       if (!trimmed) continue;
@@ -77,11 +78,11 @@ function GroupEditForm({ group, onClose }: Omit<GroupEditSheetProps, 'open'>) {
     onClose();
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm(t.groupEdit.deleteConfirm)) return;
-    await archiveCategoryGroup(group.id);
-    onClose();
-    void navigate('/', { replace: true });
+  const handleDelete = () => {
+    requestCategoryGroupDeletion(group.id, () => {
+      onClose();
+      void navigate('/', { replace: true });
+    });
   };
 
   return (
@@ -160,6 +161,7 @@ function GroupEditForm({ group, onClose }: Omit<GroupEditSheetProps, 'open'>) {
               className={styles.subRemove}
               onClick={() => removeRow(index)}
               aria-label={t.groupEdit.removeAria}
+              disabled={saving}
             >
               <X size={16} aria-hidden="true" />
             </button>
@@ -173,7 +175,7 @@ function GroupEditForm({ group, onClose }: Omit<GroupEditSheetProps, 'open'>) {
       <button type="button" className={styles.save} disabled={!name.trim() || saving} onClick={() => void handleSave()}>
         {t.groupEdit.save}
       </button>
-      <button type="button" className={styles.delete} onClick={() => void handleDelete()}>
+      <button type="button" className={styles.delete} disabled={saving} onClick={handleDelete}>
         {t.groupEdit.delete}
       </button>
     </Sheet>

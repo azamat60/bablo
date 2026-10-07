@@ -67,30 +67,13 @@ export async function archiveCategory(id: string): Promise<void> {
   await db.categories.update(id, { archived: true, ...touchMeta(category.rev) });
 }
 
-export async function deleteCategoryIfUnused(id: string): Promise<'deleted' | 'archived' | 'blocked'> {
-  const category = await db.categories.get(id);
-  if (!category || category.isSystem) return 'blocked';
-  const usedByTransaction = (await db.transactions.toArray()).some(
-    (tx) => tx.categoryId === id || tx.splits?.some((split) => split.categoryId === id),
-  );
-  const usedByRecurring = (await db.recurring.toArray()).some((row) => row.categoryId === id);
-  const usedByPayee = (await db.payees.toArray()).some((row) => row.defaultCategoryId === id);
-  const usedByBudget = await db.budgets.where('categoryId').equals(id).count();
-  if (usedByTransaction || usedByRecurring || usedByPayee || usedByBudget > 0) {
-    await archiveCategory(id);
-    return 'archived';
-  }
-  await db.categories.update(id, { deleted: true, ...touchMeta(category.rev) });
-  return 'deleted';
-}
-
 export function useCategoryGroup(id: string | undefined): CategoryGroupWithCategories | undefined {
   return useLiveQuery(async () => {
     if (!id) return undefined;
     const group = await db.categoryGroups.get(id);
-    if (!group) return undefined;
+    if (!group || group.deleted || group.archived) return undefined;
     const categories = await db.categories.where('groupId').equals(id).sortBy('order');
-    return { ...group, categories };
+    return { ...group, categories: categories.filter((category) => !category.deleted && !category.archived) };
   }, [id]);
 }
 

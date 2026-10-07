@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Sheet } from '@/components/Sheet';
 import { AppIcon } from '@/components/AppIcon';
-import { archiveCategory, createCategory, deleteCategoryIfUnused, updateCategory } from '@/db/queries/categories';
+import { archiveCategory, createCategory, updateCategory } from '@/db/queries/categories';
+import { useDeletion } from '@/components/DeletionProvider';
 import { DEFAULT_ICON_KEY, ICON_KEYS } from '@/lib/icons';
 import { useLocale, useT } from '@/i18n';
 import { categorySuggestions, useCategoryRecommendations } from '@/db/queries/categoryRecommendations';
@@ -18,6 +19,7 @@ type CategoryFormSheetProps = {
 
 export function CategoryFormSheet({ open, onClose, group, category }: CategoryFormSheetProps) {
   const t = useT();
+  const { requestCategoryDeletion } = useDeletion();
   const recommendations = useCategoryRecommendations(useLocale());
   const suggestions = categorySuggestions(group, recommendations ?? []);
   const [name, setName] = useState(category?.name ?? '');
@@ -61,10 +63,9 @@ export function CategoryFormSheet({ open, onClose, group, category }: CategoryFo
     resetAndClose();
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!category) return;
-    await deleteCategoryIfUnused(category.id);
-    resetAndClose();
+    requestCategoryDeletion(category.id, resetAndClose);
   };
 
   return (
@@ -158,12 +159,19 @@ export function CategoryFormSheet({ open, onClose, group, category }: CategoryFo
       >
         {t.categoryForm.save}
       </button>
-      {isEditing && !category?.isSystem && (
+      {isEditing && (
         <div className={styles.dangerRow}>
-          <button type="button" className={styles.dangerButton} onClick={() => void handleArchive()}>
-            {t.categoryForm.archive}
-          </button>
-          <button type="button" className={styles.dangerButton} onClick={() => void handleDelete()}>
+          {!category?.isSystem && (
+            <button
+              type="button"
+              className={styles.dangerButton}
+              disabled={saving}
+              onClick={() => void handleArchive()}
+            >
+              {t.categoryForm.archive}
+            </button>
+          )}
+          <button type="button" className={styles.dangerButton} disabled={saving} onClick={handleDelete}>
             {t.categoryForm.delete}
           </button>
         </div>

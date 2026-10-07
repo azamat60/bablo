@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../db';
 import { completeOnboarding } from '../queries/onboarding';
 import type { OnboardingState } from '@/features/onboarding/OnboardingPage.types';
@@ -19,6 +19,8 @@ import {
 import type { StatementLine } from '@/features/add/StatementReviewPage.types';
 import { validateLedger, emptyLedger } from '../../../shared/ledger';
 import { appendCategoryGuess } from '../../../shared/categoryGuess';
+import { deleteAccount, getAccountDeletionImpact } from '../queries/accounts';
+import { createRecurring, runDueRecurring } from '../queries/recurring';
 const meta = (id: string) => ({ id, updatedAt: 1, rev: 1, deleted: false });
 const line = (id: string, memo = 'coffee'): StatementLine => ({
   localId: id,
@@ -244,6 +246,186 @@ describe('atomic ledger writes', () => {
     expect(validateLedger(emptyLedger())).toEqual(emptyLedger());
     const snapshot: unknown = JSON.parse(await exportBackupJson());
     expect(snapshot).toBeTruthy();
+  });
+});
+
+describe('complete account deletion', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-07T06:00:00Z'));
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('deletes related records and both transfer legs, preserving other accounts and savings', async () => {
+    const ownId = await expense();
+    const otherId = await createTransaction({
+      accountId: 'usd',
+      currency: 'USD',
+      date: '2026-10-05',
+      amount: -100,
+      categoryId: 'expense',
+    });
+    await createTransfer({
+      fromAccountId: 'usd',
+      toAccountId: 'kgs',
+      amount: 100,
+      fromCurrency: 'USD',
+      toCurrency: 'KGS',
+      date: '2026-10-05',
+    });
+    const ownRecurringId = await createRecurring({
+      accountId: 'kgs',
+      currency: 'KGS',
+      amount: -100,
+      categoryId: 'expense',
+      frequency: 'monthly',
+      interval: 1,
+      nextRun: '2026-10-05',
+      autoPost: true,
+    });
+    const otherRecurringId = await createRecurring({
+      accountId: 'usd',
+      currency: 'USD',
+      amount: -100,
+      categoryId: 'expense',
+      frequency: 'monthly',
+      interval: 1,
+      nextRun: '2099-10-05',
+      autoPost: true,
+    });
+    await db.goals.add({
+      ...meta('goal'),
+      name: 'Trip',
+      icon: 'wallet',
+      color: '#fff',
+      targetAmount: 10000,
+      accountId: 'kgs',
+      order: 0,
+      archived: false,
+    });
+    await db.goalContributions.add({ ...meta('contribution'), goalId: 'goal', amount: 100, date: '2026-10-05' });
+    await db.attachments.bulkAdd(
+      [ownId, otherId].map((txId) => ({
+        ...meta(`photo-${txId}`),
+        txId,
+        mimeType: 'image/png',
+        blob: new Blob(['image']),
+      })),
+    );
+
+    expect(await getAccountDeletionImpact('kgs')).toEqual({
+      transactionCount: 2,
+      transferCount: 1,
+      recurringCount: 1,
+      goalCount: 1,
+    });
+    await deleteAccount('kgs');
+
+    expect(await db.accounts.get('kgs')).toMatchObject({ deleted: true, rev: 2 });
+    expect(await db.accounts.get('usd')).toMatchObject({ deleted: false, rev: 1 });
+    const transactions = await db.transactions.toArray();
+    expect(transactions.filter((row) => !row.deleted).map((row) => row.id)).toEqual([otherId]);
+    expect(transactions.filter((row) => row.transferId).every((row) => row.deleted)).toBe(true);
+    expect(await db.attachments.get(`photo-${ownId}`)).toMatchObject({ deleted: true, rev: 2 });
+    expect(await db.attachments.get(`photo-${otherId}`)).toMatchObject({ deleted: false });
+    expect(await db.recurring.get(ownRecurringId)).toMatchObject({ deleted: true, active: false, rev: 2 });
+    expect(await db.recurring.get(otherRecurringId)).toMatchObject({ deleted: false, active: true, rev: 1 });
+    expect(await db.goals.get('goal')).toMatchObject({ deleted: false, accountId: undefined, rev: 2 });
+    expect(await db.goalContributions.get('contribution')).toMatchObject({ deleted: false, amount: 100 });
+    expect(await runDueRecurring()).toBe(0);
+    await expect(restoreTransaction(ownId)).rejects.toThrow('доступный счёт');
+    const backup: unknown = JSON.parse(await exportBackupJson());
+    expect(() => validateLedger(backup)).not.toThrow();
+  });
+
+  it('rolls back the full deletion if any related write fails', async () => {
+    const id = await expense();
+    const before = JSON.parse(await exportBackupJson()) as { tables: unknown; attachments: unknown };
+    const fail = () => {
+      throw new Error('account write failed');
+    };
+    db.accounts.hook('updating', fail);
+    try {
+      await expect(deleteAccount('kgs')).rejects.toThrow('account write failed');
+    } finally {
+      db.accounts.hook('updating').unsubscribe(fail);
+    }
+    expect(await db.transactions.get(id)).toMatchObject({ deleted: false, rev: 1 });
+    const after = JSON.parse(await exportBackupJson()) as unknown;
+    expect(after).toMatchObject({ tables: before.tables, attachments: before.attachments });
+  });
+
+  it('deletes the last empty account and tolerates repeated or missing deletes', async () => {
+    await deleteAccount('kgs');
+    await deleteAccount('usd');
+    await deleteAccount('missing');
+    await deleteAccount('usd');
+    expect((await db.accounts.toArray()).every((row) => row.deleted && row.rev === 2)).toBe(true);
+    expect(await getAccountDeletionImpact('usd')).toEqual({
+      transactionCount: 0,
+      transferCount: 0,
+      recurringCount: 0,
+      goalCount: 0,
+    });
+    const backup: unknown = JSON.parse(await exportBackupJson());
+    expect(() => validateLedger(backup)).not.toThrow();
+  });
+
+  it('keeps previously deleted transfers deleted and prevents undo through the other account', async () => {
+    await createTransfer({
+      fromAccountId: 'usd',
+      toAccountId: 'kgs',
+      amount: 100,
+      fromCurrency: 'USD',
+      toCurrency: 'KGS',
+      date: '2026-10-05',
+    });
+    const outgoing = (await db.transactions.where('accountId').equals('usd').first())!;
+    await deleteTransaction(outgoing.id);
+    expect((await getAccountDeletionImpact('kgs')).transactionCount).toBe(0);
+    await deleteAccount('kgs');
+    await expect(restoreTransaction(outgoing.id)).rejects.toThrow('доступный счёт');
+    expect((await db.transactions.toArray()).every((row) => row.deleted && row.rev === 2)).toBe(true);
+  });
+
+  it('rechecks a recurring snapshot after an account was deleted', async () => {
+    await createRecurring({
+      accountId: 'kgs',
+      currency: 'KGS',
+      amount: -100,
+      categoryId: 'expense',
+      frequency: 'monthly',
+      interval: 1,
+      nextRun: '2026-10-05',
+      autoPost: true,
+    });
+    const stale = await db.recurring.toArray();
+    await deleteAccount('kgs');
+    const snapshot = vi.spyOn(db.recurring, 'toArray').mockResolvedValueOnce(stale);
+    try {
+      expect(await runDueRecurring()).toBe(0);
+    } finally {
+      snapshot.mockRestore();
+    }
+    expect(await db.transactions.count()).toBe(0);
+    expect(await db.recurring.get(stale[0]!.id)).toMatchObject({ deleted: true, active: false });
+  });
+
+  it('still posts and advances an active recurring transaction', async () => {
+    const id = await createRecurring({
+      accountId: 'kgs',
+      currency: 'KGS',
+      amount: -100,
+      categoryId: 'expense',
+      frequency: 'monthly',
+      interval: 1,
+      nextRun: '2026-10-05',
+      autoPost: true,
+    });
+    expect(await runDueRecurring()).toBe(1);
+    expect(await db.transactions.toArray()).toMatchObject([{ accountId: 'kgs', amount: -100, deleted: false }]);
+    expect(await db.recurring.get(id)).toMatchObject({ nextRun: '2026-11-05', active: true, deleted: false });
+    expect(await runDueRecurring()).toBe(0);
   });
 });
 

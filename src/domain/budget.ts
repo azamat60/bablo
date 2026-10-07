@@ -94,13 +94,13 @@ export function categoryActivityInMonth(transactions: Transaction[], categoryId:
 
 export function categoryAssignedThroughMonth(budgets: BudgetEntry[], categoryId: string, month: string): number {
   return budgets
-    .filter((entry) => entry.categoryId === categoryId && entry.month <= month)
+    .filter((entry) => !entry.deleted && entry.categoryId === categoryId && entry.month <= month)
     .reduce((sum, entry) => sumMinorUnits(sum, entry.assigned), 0);
 }
 
 export function categoryAssignedInMonth(budgets: BudgetEntry[], categoryId: string, month: string): number {
   return checkedMinorUnits(
-    budgets.find((entry) => entry.categoryId === categoryId && entry.month === month)?.assigned ?? 0,
+    budgets.find((entry) => !entry.deleted && entry.categoryId === categoryId && entry.month === month)?.assigned ?? 0,
   );
 }
 
@@ -184,7 +184,7 @@ export function buildMonthBudgetIndex(
   };
 
   for (const entry of budgets) {
-    if (entry.month > month) continue;
+    if (entry.deleted || entry.month > month) continue;
     bump(assignedThrough, entry.categoryId, entry.assigned);
     if (entry.month === month) bump(assignedIn, entry.categoryId, entry.assigned);
   }

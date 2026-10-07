@@ -46,6 +46,43 @@ export const en = {
   app: {
     aiCaptureQueue: 'AI capture queue',
   },
+  deletion: {
+    accountTitle: 'Delete account?',
+    transactionTitle: 'Delete transaction?',
+    transferTitle: 'Delete transfer?',
+    categoryTitle: 'Delete subcategory?',
+    groupTitle: 'Delete entire category?',
+    accountDescription: 'The account and its transactions will be removed from your budget. This cannot be undone.',
+    transactionDescription: 'The transaction will disappear from your history. Your balance and reports will update.',
+    transferDescription: 'Both sides of the transfer will be deleted. The balances of both accounts will update.',
+    transferWarning: 'Transfers will also disappear from the other accounts, changing their balances.',
+    goalsWarning: 'Savings goals and their contributions will stay. Only the account link will be removed.',
+    categoryDescription:
+      'The subcategory and all its income and expenses will be removed. Account balances will update. This cannot be undone.',
+    groupDescription:
+      'The category, its subcategories and all their income and expenses will be removed. Account balances will update. This cannot be undone.',
+    splitWarning: 'Split transactions will be deleted in full, including portions assigned to other categories.',
+    accountAction: 'Delete account',
+    transactionAction: 'Delete transaction',
+    accountAria: (name: string) => `Delete account ${name}`,
+    transactionAria: (name: string) => `Delete transaction ${name}`,
+    transactions: (n: number) => `${n} ${n === 1 ? 'transaction' : 'transactions'}`,
+    transfers: (n: number) => `${n} ${n === 1 ? 'transfer' : 'transfers'} across two accounts`,
+    recurring: (n: number) => `${n} ${n === 1 ? 'recurring transaction' : 'recurring transactions'}`,
+    categories: (n: number) => `${n} ${n === 1 ? 'subcategory' : 'subcategories'}`,
+    budgets: (n: number) => `${n} ${n === 1 ? 'budget entry' : 'budget entries'}`,
+    deleting: 'Deleting…',
+    restoring: 'Restoring…',
+    accountDeleted: 'Account deleted',
+    categoryDeleted: 'Category and its transactions deleted',
+    transactionDeleted: 'Transaction deleted',
+    transferDeleted: 'Transfer deleted',
+    restored: 'Transaction restored',
+    undo: 'Undo',
+    deleteError: 'Could not delete. Try again.',
+    undoError: 'Could not restore the transaction.',
+    unavailable: 'This item has already been deleted.',
+  },
   home: {
     expenseTab: 'Expenses',
     incomeTab: 'Income',
@@ -202,7 +239,8 @@ export const en = {
     add: 'Add',
     save: 'Save',
     delete: 'Delete category',
-    deleteConfirm: 'The category and its subcategories will be archived. Transactions are kept.',
+    deleteConfirm:
+      'The category, its subcategories and related transactions will be deleted. Account balances will update.',
     removeAria: 'Remove subcategory',
   },
 
@@ -429,7 +467,8 @@ export const en = {
   },
   categoriesPage: {
     recommended: 'Recommended categories',
-    recommendedHint: 'Choose what you need to add to your existing set.',
+    recommendedHint:
+      'Only categories missing from your current set are shown. Previously removed categories can be added again.',
     addRecommended: (n: number) => `Add ${n} categories`,
     allRecommendedAdded: 'All recommendations are already in your set.',
     recommendFailed: 'Could not add categories. Try again.',
