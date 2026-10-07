@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Trash2 } from 'lucide-react';
 import { db } from '@/db/db';
 import { AppIcon } from '@/components/AppIcon';
+import { useDeletion } from '@/components/DeletionProvider';
 import { useAccountBalance, useTransactions } from '@/db/queries/transactions';
 import { TransactionRow } from '@/components/TransactionRow';
 import { formatMoney } from '@/domain/money';
@@ -16,13 +17,14 @@ export function AccountLedgerPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const t = useT();
+  const { requestAccountDeletion } = useDeletion();
   const account = useLiveQuery(() => (id ? db.accounts.get(id) : undefined), [id]);
   const balance = useAccountBalance(id ?? '');
   const transactions = useTransactions({ accountId: id });
   const groups = groupTransactionsByDate(transactions);
   const [reconcileOpen, setReconcileOpen] = useState(false);
 
-  if (!id || !account) return null;
+  if (!id || !account || account.deleted) return null;
 
   return (
     <div className={styles.root}>
@@ -32,9 +34,19 @@ export function AccountLedgerPage() {
             <ArrowLeft size={18} aria-hidden="true" />
             {t.ledger.back}
           </button>
-          <button type="button" className={styles.reconcileButton} onClick={() => setReconcileOpen(true)}>
-            {t.ledger.reconcile}
-          </button>
+          <div className={styles.headerActions}>
+            <button type="button" className={styles.reconcileButton} onClick={() => setReconcileOpen(true)}>
+              {t.ledger.reconcile}
+            </button>
+            <button
+              type="button"
+              className={styles.deleteButton}
+              aria-label={t.deletion.accountAria(account.name)}
+              onClick={() => requestAccountDeletion(id, () => void navigate('/accounts', { replace: true }))}
+            >
+              <Trash2 size={18} aria-hidden="true" />
+            </button>
+          </div>
         </div>
         <div className={styles.titleRow}>
           <span className={styles.icon} style={{ background: account.color }}>

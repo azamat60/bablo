@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Sparkles, Split, X } from 'lucide-react';
+import { Sparkles, Split, Trash2, X } from 'lucide-react';
 import { NumberPad } from '@/components/NumberPad';
 import { NUMBER_PAD_DISMISS_KEY } from '@/components/NumberPad/NumberPad.constants';
 import { AmountDisplay } from '@/components/AmountDisplay';
@@ -9,7 +9,7 @@ import { DateChips } from '@/components/DateChips';
 import { AccountPickerSheet } from '@/components/AccountPickerSheet';
 import { GroupPickerSheet } from '@/components/GroupPickerSheet';
 import { AppIcon } from '@/components/AppIcon';
-import { deleteTransaction, restoreTransaction } from '@/db/queries/transactions';
+import { useDeletion } from '@/components/DeletionProvider';
 import { useAccountBalances } from '@/db/queries/transactions';
 import { useNumberPad } from '@/hooks/useNumberPad';
 import { decimalFromMinor, formatMoney } from '@/domain/money';
@@ -65,6 +65,7 @@ export function ComposerPage({ seedKind, editingId }: ComposerPageProps) {
 
 function ComposerForm({ onLeave }: { onLeave: () => void }) {
   const t = useT();
+  const { requestTransactionDeletion } = useDeletion();
   const navigate = useNavigate();
   const balances = useAccountBalances();
   const composer = useComposerDraft();
@@ -75,25 +76,6 @@ function ComposerForm({ onLeave }: { onLeave: () => void }) {
   const savingRef = useRef(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleted, setDeleted] = useState(false);
-  const changeDeletion = async (undo: boolean) => {
-    if (!draft.editingId || savingRef.current) return;
-    savingRef.current = true;
-    setSaving(true);
-    setSaveError(null);
-    try {
-      if (undo) await restoreTransaction(draft.editingId);
-      else await deleteTransaction(draft.editingId);
-      setDeleted(!undo);
-      setConfirmDelete(false);
-    } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Ошибка удаления.');
-    } finally {
-      savingRef.current = false;
-      setSaving(false);
-    }
-  };
   const [accountPicker, setAccountPicker] = useState<'from' | 'to' | null>(null);
   const [groupPicker, setGroupPicker] = useState(false);
   const [padOpen, setPadOpen] = useState(true);
@@ -342,35 +324,25 @@ function ComposerForm({ onLeave }: { onLeave: () => void }) {
         <button
           type="button"
           className={styles.save}
-          disabled={deleted || saving || !validation.canSave}
+          disabled={saving || !validation.canSave}
           onClick={() => void handleSave()}
         >
           {t.addTx.save}
         </button>
-        {draft.editingId &&
-          (deleted ? (
-            <div role="status">
-              Операция удалена.{' '}
-              <button type="button" disabled={saving} onClick={() => void changeDeletion(true)}>
-                Отменить удаление
-              </button>
-            </div>
-          ) : confirmDelete ? (
-            <div role="alert">
-              Удалить операцию{isTransfer ? ' и обе стороны перевода' : ''}?{' '}
-              <button type="button" disabled={saving} onClick={() => void changeDeletion(false)}>
-                Да, удалить
-              </button>
-              <button type="button" onClick={() => setConfirmDelete(false)}>
-                Отмена
-              </button>
-            </div>
-          ) : (
-            <button type="button" className={styles.delete} onClick={() => setConfirmDelete(true)}>
-              Удалить операцию
-            </button>
-          ))}
-        {padOpen && !deleted && (
+        {draft.editingId && (
+          <button
+            type="button"
+            className={styles.delete}
+            disabled={saving}
+            onClick={() => {
+              if (draft.editingId) requestTransactionDeletion(draft.editingId, onLeave);
+            }}
+          >
+            <Trash2 size={16} aria-hidden="true" />
+            {t.addTx.deleteTransaction}
+          </button>
+        )}
+        {padOpen && (
           <NumberPad
             labels={{ [NUMBER_PAD_DISMISS_KEY]: t.composer.closeKey }}
             onKey={(key) => (key === NUMBER_PAD_DISMISS_KEY ? setPadOpen(false) : pad.press(key))}

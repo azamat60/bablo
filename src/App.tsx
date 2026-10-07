@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 import { Bot } from 'lucide-react';
 import { TabBar } from '@/components/TabBar';
 import { DragLayer } from '@/components/DragLayer';
+import { DeletionProvider } from '@/components/DeletionProvider';
 import { ScrollContainerContext } from '@/components/ScrollContainer';
 import { useSettings } from '@/db/queries/settings';
 import { useAiJobs } from '@/db/queries/aiJobs';
@@ -53,20 +54,22 @@ export function App() {
   const pendingJobs = aiJobs.length;
 
   return (
-    <div className={styles.shell}>
-      {showChrome && pendingJobs > 0 && (
-        <Link to="/ai-jobs" className={styles.aiJobsButton} aria-label={t.app.aiCaptureQueue}>
-          <Bot size={18} aria-hidden="true" />
-          <span className={styles.aiJobsBadge}>{pendingJobs}</span>
-        </Link>
-      )}
-      <ScrollContainerContext value={scrollRef}>
-        <div ref={scrollRef} className={`${styles.content} ${showChrome ? styles.contentWithChrome : ''}`}>
-          <Outlet />
-        </div>
-        <DragLayer />
-      </ScrollContainerContext>
-      {showChrome && <TabBar />}
-    </div>
+    <DeletionProvider>
+      <div className={styles.shell}>
+        {showChrome && pendingJobs > 0 && (
+          <Link to="/ai-jobs" className={styles.aiJobsButton} aria-label={t.app.aiCaptureQueue}>
+            <Bot size={18} aria-hidden="true" />
+            <span className={styles.aiJobsBadge}>{pendingJobs}</span>
+          </Link>
+        )}
+        <ScrollContainerContext value={scrollRef}>
+          <div ref={scrollRef} className={`${styles.content} ${showChrome ? styles.contentWithChrome : ''}`}>
+            <Outlet />
+          </div>
+          <DragLayer />
+        </ScrollContainerContext>
+        {showChrome && <TabBar />}
+      </div>
+    </DeletionProvider>
   );
 }

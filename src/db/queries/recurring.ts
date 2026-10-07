@@ -45,35 +45,54 @@ export async function runDueRecurring(): Promise<number> {
   const due = all.filter((r) => r.active && !r.deleted && r.nextRun <= today);
 
   let created = 0;
-  for (const recurring of due) {
-    let nextRun = recurring.nextRun;
-    while (nextRun <= today && (!recurring.endDate || nextRun <= recurring.endDate)) {
-      if (recurring.autoPost) {
-        const transaction: Transaction = {
-          ...newMeta(),
-          accountId: recurring.accountId,
-          date: nextRun,
-          amount: recurring.amount,
-          currency: recurring.currency,
-          rate: 1,
-          categoryId: recurring.categoryId,
-          memo: recurring.memo,
-          cleared: false,
-          tags: [],
-          attachmentIds: [],
-          source: 'recurring',
-        };
-        await db.transactions.add(transaction);
-        created += 1;
-      }
-      nextRun = computeNextRun(nextRun, recurring.frequency, recurring.interval, recurring.dayOfMonth);
-    }
-    const stillActive = !recurring.endDate || nextRun <= recurring.endDate;
-    await db.recurring.update(recurring.id, {
-      nextRun,
-      active: stillActive,
-      ...touchMeta(recurring.rev),
-    });
-  }
+  for (const recurring of due) created += await runRecurring(recurring.id, today);
   return created;
+}
+
+async function runRecurring(id: string, today: string): Promise<number> {
+  return db.transaction(
+    'rw',
+    [db.accounts, db.categories, db.categoryGroups, db.recurring, db.transactions],
+    async () => {
+      const recurring = await db.recurring.get(id);
+      if (!recurring || recurring.deleted || !recurring.active) return 0;
+      const account = await db.accounts.get(recurring.accountId);
+      if (!account || account.deleted) return 0;
+      if (recurring.categoryId) {
+        const category = await db.categories.get(recurring.categoryId);
+        const group = category ? await db.categoryGroups.get(category.groupId) : undefined;
+        if (!category || category.deleted || !group || group.deleted) return 0;
+      }
+      let created = 0;
+      let nextRun = recurring.nextRun;
+      while (nextRun <= today && (!recurring.endDate || nextRun <= recurring.endDate)) {
+        if (recurring.autoPost) {
+          const transaction: Transaction = {
+            ...newMeta(),
+            accountId: recurring.accountId,
+            date: nextRun,
+            amount: recurring.amount,
+            currency: recurring.currency,
+            rate: 1,
+            categoryId: recurring.categoryId,
+            memo: recurring.memo,
+            cleared: false,
+            tags: [],
+            attachmentIds: [],
+            source: 'recurring',
+          };
+          await db.transactions.add(transaction);
+          created += 1;
+        }
+        nextRun = computeNextRun(nextRun, recurring.frequency, recurring.interval, recurring.dayOfMonth);
+      }
+      const stillActive = !recurring.endDate || nextRun <= recurring.endDate;
+      await db.recurring.update(recurring.id, {
+        nextRun,
+        active: stillActive,
+        ...touchMeta(recurring.rev),
+      });
+      return created;
+    },
+  );
 }

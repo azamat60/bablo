@@ -18,18 +18,19 @@ export type CategoryRecommendation = {
 
 export function recommendedCategories(locale: Locale, groups: CategoryGroup[], categories: Category[]) {
   const translated = getCategoryPreset('full', locale);
-  const kinds = new Map(groups.map((group) => [group.id, group.kind]));
+  const kinds = new Map(
+    groups.filter((group) => !group.archived && !group.deleted).map((group) => [group.id, group.kind]),
+  );
   return STARTER_GROUPS.flatMap((original, groupIndex) => {
-    const matchingGroups = groups.filter(
-      (group) => group.kind === original.kind && sameName(group.name, original.name),
-    );
-    if (matchingGroups.length && matchingGroups.every((group) => group.archived || group.deleted)) return [];
     const group = translated[groupIndex]!;
     return original.categories.flatMap((category, categoryIndex): CategoryRecommendation[] => {
       const exists = categories.some((existing) => {
         const kind = kinds.get(existing.groupId);
         return (
-          kind === original.kind && (sameName(existing.name, category.name) || (category.isSystem && existing.isSystem))
+          !existing.archived &&
+          !existing.deleted &&
+          kind === original.kind &&
+          (sameName(existing.name, category.name) || (category.isSystem && existing.isSystem))
         );
       });
       return exists
