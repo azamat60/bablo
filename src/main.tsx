@@ -4,9 +4,11 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router';
 import { registerSW } from 'virtual:pwa-register';
 import { initializeAuth } from '@/lib/auth';
+import { installPortraitLock } from '@/lib/orientation';
 import '@/styles/tokens.css';
 
 registerSW({ immediate: true });
+installPortraitLock();
 
 let user: Awaited<ReturnType<typeof initializeAuth>> = null;
 let error = '';

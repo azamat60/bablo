@@ -9,3 +9,4 @@ dev-dist
 coverage
 *.tsbuildinfo
 .claude/
+.sites-runtime/
