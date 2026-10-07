@@ -18,6 +18,7 @@ import {
 } from '@/features/add/StatementReviewPage.utils';
 import type { StatementLine } from '@/features/add/StatementReviewPage.types';
 import { validateLedger, emptyLedger } from '../../../shared/ledger';
+import { appendCategoryGuess } from '../../../shared/categoryGuess';
 const meta = (id: string) => ({ id, updatedAt: 1, rev: 1, deleted: false });
 const line = (id: string, memo = 'coffee'): StatementLine => ({
   localId: id,
@@ -158,6 +159,26 @@ describe('atomic ledger writes', () => {
     await expense();
     await expect(importStatementRows({ rows, accountId: 'kgs', currency: 'KGS', groups: [] })).rejects.toThrow('дубли');
     expect(await db.transactions.count()).toBe(1);
+  });
+  it('persists guessed category notes and detects reimport even when AI changes its confidence', async () => {
+    const memo = appendCategoryGuess('coffee', 'Expenses / Food', 0.65, 'Название похоже на кафе');
+    const item = { ...line('one', memo), confidence: 0.65 };
+    const reviewContext = { accountId: 'kgs', currency: 'KGS' };
+    const rows = resolveRows([item], [], {}, reviewContext);
+    await importStatementRows({ rows, accountId: 'kgs', currency: 'KGS', groups: [] });
+    const saved = (await db.transactions.toArray())[0]!;
+    expect(saved.memo).toBe(memo);
+    expect(saved.aiConfidence).toBe(0.65);
+    expect(saved.categoryId).toBe('expense');
+    expect(await exportBackupJson()).toContain('Confidence level: 65%');
+    const changed = {
+      ...item,
+      memo: appendCategoryGuess('coffee', 'Expenses / Food', 0.55, 'Другое объяснение'),
+      confidence: 0.55,
+    };
+    expect(resolveRows([changed], [saved], {}, reviewContext)[0]?.include).toBe(false);
+    expect(resolveRows([line('old')], [saved], {}, reviewContext)[0]?.duplicate).toBe(true);
+    expect(resolveRows([line('different', 'another purchase')], [saved], {}, reviewContext)[0]?.duplicate).toBe(false);
   });
   it('detects internal duplicates and expires edited approval', () => {
     const rows = resolveRows([line('one'), line('two')], [], {}, { accountId: 'kgs', currency: 'KGS' });

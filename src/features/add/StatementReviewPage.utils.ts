@@ -6,6 +6,7 @@ import { createTransaction } from '@/db/queries/transactions';
 import { upsertPayee } from '@/db/queries/payees';
 import type { AiStatement } from '@/lib/aiTypes';
 import { getActiveLocale } from '@/i18n/state';
+import { stripCategoryGuess } from '../../../shared/categoryGuess';
 import type { StatementLine, StatementRow } from './StatementReviewPage.types';
 
 export const LOW_CONFIDENCE = 0.6;
@@ -107,7 +108,7 @@ export function transactionKey(
     date,
     amountMinor,
     normaliseText(details.payee ?? ''),
-    normaliseText(details.memo ?? ''),
+    normaliseText(stripCategoryGuess(details.memo ?? '')),
   ]);
 }
 

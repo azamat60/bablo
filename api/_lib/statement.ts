@@ -1,6 +1,7 @@
 import type OpenAI from 'openai';
 import { categoryListText, labelCategories, resolveCategoryId, type CategoryLabels } from './categories.js';
 import { CATEGORY_GUESSING_RULES } from './prompt.js';
+import { appendCategoryGuess } from '../../shared/categoryGuess.js';
 import type { AiRequestContext, AiStatement, AiStatementTransaction } from './types.js';
 
 export const STATEMENT_MAX_BYTES = 4 * 1024 * 1024;
@@ -24,6 +25,8 @@ export function buildStatementPrompt(context: AiRequestContext, labels: Category
     'For each item choose exactly one category from this list, written as "Group / Name". Copy the label exactly; never invent one that is not listed:',
     categoryListText(labels),
     ...CATEGORY_GUESSING_RULES,
+    'When an expense description is unclear, use merchant spelling, abbreviations, business type and surrounding statement context to choose the most plausible listed expense category. Mark categoryGuessed true whenever the purpose or category is inferred from ambiguous clues. Do not invent purchases, merchants, dates or amounts to justify a category.',
+    'For an inferred category set confidence below 0.8 and write a short categoryReason in Russian explaining the actual clue and possible purpose. confidence is your subjective estimate from 0 to 1, including category uncertainty, not a calibrated probability. A clearly identified merchant or explicit purchase can have categoryGuessed false and categoryReason null. If no clue exists, use an uncategorized category, categoryGuessed true and low confidence; explain that the purpose is unknown.',
     'For transfers pick any listed category of the matching direction and set a low confidence.',
     `Known payee names, for spelling consistency when you recognize one: ${payeeList}`,
   ].join('\n');
@@ -61,9 +64,27 @@ export function buildStatementSchema(labels: CategoryLabels) {
               enum: labels.labels,
               description: 'One label from the category list, copied exactly',
             },
-            confidence: { type: 'number', description: '0 to 1' },
+            confidence: {
+              type: 'number',
+              minimum: 0,
+              maximum: 1,
+              description: 'Subjective certainty of the transaction including category; below 0.8 for guesses',
+            },
+            categoryGuessed: { type: 'boolean', description: 'True if the expense purpose or category is a guess' },
+            categoryReason: { type: ['string', 'null'], description: 'Short explanation of the guess in Russian' },
           },
-          required: ['date', 'amountAsPrinted', 'amount', 'kind', 'payee', 'memo', 'category', 'confidence'],
+          required: [
+            'date',
+            'amountAsPrinted',
+            'amount',
+            'kind',
+            'payee',
+            'memo',
+            'category',
+            'confidence',
+            'categoryGuessed',
+            'categoryReason',
+          ],
         },
       },
     },
@@ -74,6 +95,8 @@ export function buildStatementSchema(labels: CategoryLabels) {
 type RawStatementTransaction = Omit<AiStatementTransaction, 'categoryId'> & {
   amountAsPrinted: string;
   category: string;
+  categoryGuessed: boolean;
+  categoryReason: string | null;
 };
 type RawStatement = Omit<AiStatement, 'transactions'> & { transactions: RawStatementTransaction[] };
 
@@ -87,11 +110,19 @@ export function kindFromPrintedSign(printed: string): 'income' | 'expense' | nul
 }
 
 function normaliseTransaction(raw: RawStatementTransaction, labels: CategoryLabels): AiStatementTransaction | null {
-  const { amountAsPrinted, category, ...tx } = raw;
+  const { amountAsPrinted, category, categoryGuessed, categoryReason, ...tx } = raw;
   const signed = kindFromPrintedSign(amountAsPrinted);
   const kind = tx.kind !== 'transfer' && signed ? signed : tx.kind;
-  const categoryId = resolveCategoryId(category, labels, kind === 'income' ? 'income' : 'expense');
-  return categoryId ? { ...tx, kind, categoryId } : null;
+  const categoryKind = kind === 'income' ? 'income' : 'expense';
+  const matchesKind = labels.kindByLabel.get(category) === categoryKind;
+  const categoryId = resolveCategoryId(matchesKind ? category : '', labels, categoryKind);
+  if (!categoryId) return null;
+  const guessed = categoryGuessed || !matchesKind;
+  const confidence = guessed ? Math.min(tx.confidence, matchesKind ? 0.79 : 0.3) : tx.confidence;
+  const label = labels.labels.find((item) => labels.idByLabel.get(item) === categoryId) ?? category;
+  const reason = matchesKind ? categoryReason : 'Исходная категория не подходит; назначена категория для проверки';
+  const memo = guessed ? appendCategoryGuess(tx.memo, label, confidence, reason) : tx.memo;
+  return { ...tx, kind, categoryId, confidence, memo };
 }
 
 type ParseStatementInput = {

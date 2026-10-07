@@ -308,6 +308,7 @@ function StatementRowItem({ row, currency, disabled, onToggleInclude, onPickCate
           </button>
           <RowBadges row={row} />
         </div>
+        {row.memo && <p className={styles.rowMemo}>{row.memo}</p>}
       </div>
       <span className={`${styles.amount} ${amountClass}`}>{formatMoney(toMinorUnits(row.amountText), currency)}</span>
     </div>
