@@ -3,12 +3,15 @@ import { db } from '@/db/db';
 import { newMeta, touchMeta } from '@/db/meta';
 import type { Account, AccountType } from '@/db/types';
 
-export function useAccounts(includeArchived = false): Account[] {
+export function useAccounts(includeArchived = false, includeDebts = false): Account[] {
   return (
     useLiveQuery(async () => {
       const all = await db.accounts.orderBy('order').toArray();
-      return all.filter((account) => !account.deleted && (includeArchived || !account.archived));
-    }, [includeArchived]) ?? []
+      return all.filter(
+        (account) =>
+          !account.deleted && (includeArchived || !account.archived) && (includeDebts || account.type !== 'debt'),
+      );
+    }, [includeArchived, includeDebts]) ?? []
   );
 }
 

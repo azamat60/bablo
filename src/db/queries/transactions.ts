@@ -163,6 +163,8 @@ async function assertInput(input: NewTransactionInput): Promise<void> {
   assertMoney(input.amount);
   assertDate(input.date);
   await assertAccount(input.accountId, input.currency);
+  if ((await db.accounts.get(input.accountId))?.type === 'debt')
+    throw new Error('Долги учитываются только переводами с кошельком.');
   if (input.splits && input.splits.length > 0) {
     let sum = 0n;
     for (const split of input.splits) {
@@ -275,6 +277,10 @@ async function buildTransfer(input: NewTransferInput, previous?: TransferPair): 
   if (input.fromAccountId === input.toAccountId) throw new Error('Выберите разные счета для перевода.');
   await assertAccount(input.fromAccountId, input.fromCurrency);
   await assertAccount(input.toAccountId, input.toCurrency);
+  const fromAccount = await db.accounts.get(input.fromAccountId);
+  const toAccount = await db.accounts.get(input.toAccountId);
+  if (fromAccount?.type === 'debt' && toAccount?.type === 'debt')
+    throw new Error('Выберите кошелёк для перевода долга.');
   const base = (await db.settings.get('singleton'))?.baseCurrency ?? input.fromCurrency;
   const fromRate =
     previous?.outgoing.currency === input.fromCurrency
@@ -364,7 +370,13 @@ export async function restoreTransaction(id: string): Promise<void> {
     const pair = transaction.transferId ? await transferPair(transaction) : undefined;
     const rows = pair ? [pair.outgoing, pair.incoming] : [transaction];
     const restored = rows.map((tx) => ({ ...tx, deleted: false, ...nextMeta(tx) }));
-    for (const tx of restored) await assertInput(tx);
+    for (const tx of restored) {
+      if (tx.transferId) {
+        assertMoney(tx.amount);
+        assertDate(tx.date);
+        await assertAccount(tx.accountId, tx.currency);
+      } else await assertInput(tx);
+    }
     await assertSafeLedger(
       restored,
       rows.map((tx) => tx.id),

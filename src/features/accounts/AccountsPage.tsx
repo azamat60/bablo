@@ -9,12 +9,13 @@ import { formatMoney } from '@/domain/money';
 import { Card } from '@/components/Card';
 import { EmptyState } from '@/components/EmptyState';
 import { useT } from '@/i18n';
+import { DebtsAccountRow } from '@/features/debts';
 import { AccountFormSheet } from './AccountFormSheet';
 import { AccountSection } from './AccountSection';
 import styles from './AccountsPage.module.css';
 
 export function AccountsPage() {
-  const accounts = useAccounts();
+  const accounts = useAccounts(false, true);
   const settings = useSettings();
   // Rows show each account in its own currency; every total has to be
   // converted first, or сом and ₺ get added together.
@@ -83,6 +84,7 @@ export function AccountsPage() {
         ))
       )}
 
+      <DebtsAccountRow />
       <button type="button" className={styles.addButton} onClick={() => setAddOpen(true)}>
         <Plus size={16} aria-hidden="true" />
         {t.accounts.addAccount}

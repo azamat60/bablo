@@ -34,7 +34,16 @@ const identifier = (value: unknown): value is string =>
 const nonnegativeInteger = (value: unknown): value is number => money(value) && value >= 0;
 const positiveRate = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value > 0;
-const ACCOUNT_TYPES = new Set(['cash', 'debit_card', 'credit_card', 'savings', 'ewallet', 'investment', 'loan']);
+const ACCOUNT_TYPES = new Set([
+  'cash',
+  'debit_card',
+  'credit_card',
+  'savings',
+  'ewallet',
+  'investment',
+  'loan',
+  'debt',
+]);
 const TRANSACTION_SOURCES = new Set(['manual', 'photo', 'voice', 'text', 'import', 'recurring']);
 const FREQUENCIES = new Set(['daily', 'weekly', 'biweekly', 'monthly', 'yearly']);
 const GOAL_TYPES = new Set(['target_by_date', 'monthly_funding', 'target_balance']);
@@ -220,6 +229,8 @@ function inspectRelations(state: LedgerState, index: LedgerIndex): void {
   for (const row of state.tables.transactions) {
     const account = referenced(index, 'accounts', row.accountId);
     assert(row.currency === account.currency);
+    if (account.type === 'debt')
+      assert(row.transferId !== undefined && row.categoryId === undefined && row.splits === undefined);
     const amount = convertedAmount(row.amount, row.rate);
     converted.set(row.id, amount);
     baseTotal += BigInt(Math.abs(amount));
@@ -252,6 +263,12 @@ function inspectRelations(state: LedgerState, index: LedgerIndex): void {
         first.deleted === second.deleted,
     );
     assert(Math.sign(first.amount as number) === -Math.sign(second.amount as number));
+    assert(
+      !(
+        index.accounts.get(String(first.accountId))?.type === 'debt' &&
+        index.accounts.get(String(second.accountId))?.type === 'debt'
+      ),
+    );
     const outgoing = (first.amount as number) < 0 ? first : second;
     const incoming = outgoing === first ? second : first;
     const expected =
@@ -269,6 +286,7 @@ function inspectRelations(state: LedgerState, index: LedgerIndex): void {
   }
   for (const row of state.tables.recurring) {
     const account = referenced(index, 'accounts', row.accountId);
+    assert(account.type !== 'debt');
     assert(row.currency === account.currency);
     if (row.categoryId !== undefined) categoryDirection(index, row.categoryId, row.amount as number);
     if (row.payeeId !== undefined) referenced(index, 'payees', row.payeeId);

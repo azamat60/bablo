@@ -41,16 +41,28 @@ export function TransactionRow({ transaction, showAccount, onClick }: Transactio
   );
 
   const isTransfer = Boolean(transaction.transferId);
+  const peer = useLiveQuery(async () => {
+    if (!transaction.transferId) return undefined;
+    const rows = await db.transactions.where('transferId').equals(transaction.transferId).toArray();
+    const other = rows.find((tx) => tx.accountId !== transaction.accountId);
+    return other ? db.accounts.get(other.accountId) : undefined;
+  }, [transaction.transferId, transaction.accountId]);
+  const debtPerson = account?.type === 'debt' ? account : peer?.type === 'debt' ? peer : undefined;
+  const debtOutgoing = account?.type === 'debt' ? transaction.amount > 0 : transaction.amount < 0;
   const isSplit = Boolean(transaction.splits && transaction.splits.length > 0);
   const icon = isTransfer ? 'repeat' : isSplit ? 'split' : (category?.icon ?? group?.icon ?? 'help-circle');
-  const title = isTransfer
-    ? transaction.amount < 0
-      ? t.transactionRow.transferOut
-      : t.transactionRow.transferIn
-    : isSplit
-      ? t.transactionRow.splitCount(transaction.splits?.length ?? 0)
-      : (payee?.name ?? categoryPath(group?.name, category?.name) ?? t.transactionRow.uncategorized);
-  const subtitle = [showAccount ? account?.name : null, transaction.memo].filter(Boolean).join(' · ');
+  const title = debtPerson
+    ? debtOutgoing
+      ? t.debts.give
+      : t.debts.take
+    : isTransfer
+      ? transaction.amount < 0
+        ? t.transactionRow.transferOut
+        : t.transactionRow.transferIn
+      : isSplit
+        ? t.transactionRow.splitCount(transaction.splits?.length ?? 0)
+        : (payee?.name ?? categoryPath(group?.name, category?.name) ?? t.transactionRow.uncategorized);
+  const subtitle = [showAccount ? account?.name : null, peer?.name, transaction.memo].filter(Boolean).join(' · ');
 
   const amountClass = transaction.amount < 0 ? styles.expense : styles.income;
 

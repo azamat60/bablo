@@ -5,7 +5,8 @@ export type SyncMeta = {
   deleted: boolean;
 };
 
-export type AccountType = 'cash' | 'debit_card' | 'credit_card' | 'savings' | 'ewallet' | 'investment' | 'loan';
+export type AccountType =
+  'cash' | 'debit_card' | 'credit_card' | 'savings' | 'ewallet' | 'investment' | 'loan' | 'debt';
 
 export type Account = SyncMeta & {
   name: string;

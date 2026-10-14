@@ -5,6 +5,7 @@ const income: DragItem = { id: 'salary', kind: 'incomeGroup' };
 const expense: DragItem = { id: 'food', kind: 'expenseGroup' };
 const cash: DragItem = { id: 'cash', kind: 'account' };
 const card: DragItem = { id: 'card', kind: 'account' };
+const debts: DragItem = { id: '__debts__', kind: 'debts' };
 
 const targets: DropTargetMeta[] = [income, expense, cash, card].map(({ id, kind }) => ({ id, kind }));
 
@@ -36,6 +37,14 @@ describe('resolveDrop', () => {
 
   it('rejects a tile dropped on itself', () => {
     expect(resolveDrop(cash, cash)).toBeNull();
+  });
+  it('keeps wallet-to-debt and debt-to-wallet directions distinct', () => {
+    expect(resolveDrop(cash, debts)).toEqual({ kind: 'debt', accountId: 'cash', direction: 'out' });
+    expect(resolveDrop(debts, cash)).toEqual({ kind: 'debt', accountId: 'cash', direction: 'in' });
+    expect(resolveDrop(income, debts)).toBeNull();
+    expect(resolveDrop(debts, expense)).toBeNull();
+    expect([...validTargetIds(debts, [...targets, debts])].sort()).toEqual(['card', 'cash']);
+    expect(validTargetIds(cash, [...targets, debts]).has(debts.id)).toBe(true);
   });
 });
 
