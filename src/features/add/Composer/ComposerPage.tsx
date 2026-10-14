@@ -97,6 +97,7 @@ function ComposerForm({ onLeave }: { onLeave: () => void }) {
 
   const isTransfer = draft.kind === 'transfer';
   const isIncome = draft.kind === 'income';
+  const debtDirection = account?.type === 'debt' ? 'in' : toAccount?.type === 'debt' ? 'out' : undefined;
 
   // Only worth suggesting before the user has chosen a subcategory themselves.
   const suggestionEnabled = !isTransfer && !splitMode && Boolean(group) && !draft.categoryId && !suggestionDismissed;
@@ -160,7 +161,11 @@ function ComposerForm({ onLeave }: { onLeave: () => void }) {
   const title = composer.isEditing
     ? t.addTx.titleEdit
     : isTransfer
-      ? t.composer.titleTransfer
+      ? debtDirection === 'out'
+        ? t.debts.give
+        : debtDirection === 'in'
+          ? t.debts.take
+          : t.composer.titleTransfer
       : isIncome
         ? t.addTx.titleIncome
         : t.addTx.titleExpense;
@@ -352,7 +357,8 @@ function ComposerForm({ onLeave }: { onLeave: () => void }) {
 
       <AccountPickerSheet
         open={accountPicker !== null}
-        excludeAccountId={accountPicker === 'to' ? draft.accountId : undefined}
+        includeDebts={isTransfer}
+        excludeAccountId={isTransfer ? (accountPicker === 'to' ? account?.id : toAccount?.id) : undefined}
         onClose={() => setAccountPicker(null)}
         onSelect={(id) => {
           patch(accountPicker === 'to' ? { toAccountId: id } : { accountId: id });

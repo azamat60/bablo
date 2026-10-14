@@ -28,6 +28,8 @@ export type NewRecurringInput = {
 };
 
 export async function createRecurring(input: NewRecurringInput): Promise<string> {
+  if ((await db.accounts.get(input.accountId))?.type === 'debt')
+    throw new Error('Долги учитываются только переводами с кошельком.');
   const recurring: Recurring = { ...newMeta(), ...input, active: true };
   await db.recurring.add(recurring);
   return recurring.id;
@@ -57,7 +59,7 @@ async function runRecurring(id: string, today: string): Promise<number> {
       const recurring = await db.recurring.get(id);
       if (!recurring || recurring.deleted || !recurring.active) return 0;
       const account = await db.accounts.get(recurring.accountId);
-      if (!account || account.deleted) return 0;
+      if (!account || account.deleted || account.type === 'debt') return 0;
       if (recurring.categoryId) {
         const category = await db.categories.get(recurring.categoryId);
         const group = category ? await db.categoryGroups.get(category.groupId) : undefined;

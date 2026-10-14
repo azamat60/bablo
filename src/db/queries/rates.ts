@@ -68,13 +68,13 @@ export async function currentRate(base: string, currency: string): Promise<numbe
   return row.rate;
 }
 
-export function useOpeningBalancesInBase(base: string) {
+export function useOpeningBalancesInBase(base: string, includeDebts = false) {
   return useLiveQuery(async () => {
     const [accounts, rates] = await Promise.all([db.accounts.toArray(), db.rates.toArray()]);
     const table = buildRateTable(rates, base),
       balances = new Map<string, number>(),
       missing = new Set<string>();
-    for (const account of accounts.filter((row) => !row.deleted)) {
+    for (const account of accounts.filter((row) => !row.deleted && (includeDebts || row.type !== 'debt'))) {
       const rate = table.get(account.currency);
       if (rate === undefined && account.openingBalance !== 0) missing.add(account.currency);
       else {
@@ -84,5 +84,5 @@ export function useOpeningBalancesInBase(base: string) {
       }
     }
     return { balances, missing: [...missing] };
-  }, [base]);
+  }, [base, includeDebts]);
 }

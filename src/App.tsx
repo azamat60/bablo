@@ -20,6 +20,7 @@ const CHROMELESS_PREFIXES = [
   '/add',
   '/onboarding',
   '/accounts/',
+  '/debts',
   '/groups/',
   '/transactions/',
   '/ai-jobs',

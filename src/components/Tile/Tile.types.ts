@@ -1,4 +1,4 @@
-export type TileKind = 'incomeGroup' | 'account' | 'expenseGroup' | 'add';
+export type TileKind = 'incomeGroup' | 'account' | 'expenseGroup' | 'debts' | 'add';
 
 /**
  * Drag-related appearance. Kept as one enum rather than a set of booleans so a

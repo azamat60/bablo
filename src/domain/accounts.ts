@@ -3,7 +3,7 @@ import type { Account, AccountType } from '@/db/types';
 
 export type AccountSectionKey = 'debit' | 'credit' | 'savings' | 'invest' | 'loan';
 
-const SECTION_BY_TYPE: Record<AccountType, AccountSectionKey> = {
+const SECTION_BY_TYPE: Record<AccountType, AccountSectionKey | undefined> = {
   cash: 'debit',
   debit_card: 'debit',
   ewallet: 'debit',
@@ -11,6 +11,7 @@ const SECTION_BY_TYPE: Record<AccountType, AccountSectionKey> = {
   savings: 'savings',
   investment: 'invest',
   loan: 'loan',
+  debt: undefined,
 };
 
 function sectionLabel(key: AccountSectionKey): string {
@@ -38,6 +39,7 @@ export function groupAccounts(accounts: Account[], balances: Map<string, number>
   const buckets = new Map<AccountSectionKey, Account[]>();
   for (const account of accounts) {
     const key = SECTION_BY_TYPE[account.type];
+    if (!key) continue;
     const list = buckets.get(key) ?? [];
     list.push(account);
     buckets.set(key, list);
@@ -51,7 +53,7 @@ export function groupAccounts(accounts: Account[], balances: Map<string, number>
 
 export type NetWorthBreakdown = { assets: number; liabilities: number; netWorth: number };
 
-const LIABILITY_TYPES: readonly AccountType[] = ['credit_card', 'loan'];
+const LIABILITY_TYPES: readonly AccountType[] = ['credit_card', 'loan', 'debt'];
 
 export function netWorthBreakdown(accounts: Account[], balances: Map<string, number>): NetWorthBreakdown {
   let assets = 0;

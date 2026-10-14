@@ -14,6 +14,7 @@ import { useDragGesture } from '@/hooks/useDragGesture';
 import { useScrollContainer } from '@/components/ScrollContainer';
 import { dropToDraft, type DragItem, type DropOutcome } from '@/domain/dragRules';
 import { formatMoney, formatNumberCompact } from '@/domain/money';
+import { DEBT_TILE_ID } from '@/domain/debts';
 import { useT } from '@/i18n';
 import { useDashboardData } from './useDashboardData';
 import type { DashboardSection, DashboardTile } from './DashboardPage.types';
@@ -61,6 +62,10 @@ export function DashboardPage() {
 
   const handleDrop = useCallback(
     (outcome: DropOutcome) => {
+      if (outcome.kind === 'debt') {
+        void navigate(`/debts?account=${encodeURIComponent(outcome.accountId)}&direction=${outcome.direction}`);
+        return;
+      }
       beginDraft(dropToDraft(outcome));
       void navigate('/add/tx');
     },
@@ -90,6 +95,7 @@ export function DashboardPage() {
    */
   const handleTile = useCallback(
     (section: DashboardSection, tileId: string) => {
+      if (tileId === DEBT_TILE_ID) return void navigate('/debts');
       if (tileId === ADD_TILE_ID.accounts) return void navigate('/accounts');
       if (tileId === ADD_TILE_ID.income || tileId === ADD_TILE_ID.expenses) {
         return void navigate('/settings/categories');
@@ -175,7 +181,7 @@ export function DashboardPage() {
                     color={tile.color}
                     icon={tile.icon}
                     label={tile.label}
-                    amountText={tileAmount(tile)}
+                    amountText={`${tileAmount(tile)}${tile.incomplete ? ' *' : ''}`}
                     secondaryText={tile.assigned === undefined ? undefined : formatNumberCompact(tile.assigned)}
                     state={tileState(tile.id)}
                     onClick={(id) => handleTile(section, id)}

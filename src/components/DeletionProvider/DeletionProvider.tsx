@@ -80,7 +80,12 @@ export function DeletionProvider({ children }: { children: ReactNode }) {
     try {
       if (request.kind === 'account') {
         await deleteAccount(request.id);
-        setNotice({ text: t.deletion.accountDeleted });
+        setNotice({
+          text:
+            details.kind === 'account' && details.account.type === 'debt'
+              ? t.debts.personDeleted
+              : t.deletion.accountDeleted,
+        });
       } else if (request.kind === 'group') {
         await deleteCategoryGroup(request.id);
         setNotice({ text: t.deletion.categoryDeleted });
@@ -122,6 +127,7 @@ export function DeletionProvider({ children }: { children: ReactNode }) {
   };
 
   const isAccount = request?.kind === 'account';
+  const isDebtPerson = details?.kind === 'account' && details.account.type === 'debt';
   const isGroup = request?.kind === 'group';
   const isCategory = request?.kind === 'category';
   const isTransfer = details?.kind === 'transaction' && Boolean(details.transaction.transferId);
@@ -130,7 +136,9 @@ export function DeletionProvider({ children }: { children: ReactNode }) {
     : isCategory
       ? t.deletion.categoryTitle
       : isAccount
-        ? t.deletion.accountTitle
+        ? isDebtPerson
+          ? t.debts.deleteTitle
+          : t.deletion.accountTitle
         : isTransfer
           ? t.deletion.transferTitle
           : t.deletion.transactionTitle;
@@ -139,7 +147,9 @@ export function DeletionProvider({ children }: { children: ReactNode }) {
     : isCategory
       ? t.deletion.categoryDescription
       : isAccount
-        ? t.deletion.accountDescription
+        ? isDebtPerson
+          ? t.debts.deleteDescription
+          : t.deletion.accountDescription
         : isTransfer
           ? t.deletion.transferDescription
           : t.deletion.transactionDescription;
@@ -177,7 +187,15 @@ export function DeletionProvider({ children }: { children: ReactNode }) {
         open={Boolean(request && details && request.id === details.id && request.kind === details.kind)}
         title={title}
         description={description}
-        confirmLabel={isAccount ? t.deletion.accountAction : isGroup ? t.groupEdit.delete : t.common.delete}
+        confirmLabel={
+          isDebtPerson
+            ? t.debts.deletePerson
+            : isAccount
+              ? t.deletion.accountAction
+              : isGroup
+                ? t.groupEdit.delete
+                : t.common.delete
+        }
         pending={pending}
         error={error}
         onClose={close}

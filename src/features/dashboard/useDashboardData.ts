@@ -8,6 +8,7 @@ import { useSettings } from '@/db/queries/settings';
 import { buildCategoryGroupIndex, groupActivity, groupIcon } from '@/domain/groups';
 import { periodRange, type Period } from '@/domain/period';
 import { useT } from '@/i18n';
+import { DEBT_COLOR, DEBT_ICON, DEBT_TILE_ID, DEBT_TYPE, summarizeDebts } from '@/domain/debts';
 import type { DashboardSection, DashboardTile } from './DashboardPage.types';
 
 export type DashboardData = {
@@ -19,7 +20,7 @@ export type DashboardData = {
 export function useDashboardData(period: Period): DashboardData {
   const t = useT();
   const settings = useSettings();
-  const accounts = useAccounts();
+  const accounts = useAccounts(false, true);
   const groups = useCategoryGroups();
   const budgets = useBudgets();
   const balances = useAccountBalances();
@@ -68,15 +69,32 @@ export function useDashboardData(period: Period): DashboardData {
     const incomeTiles = groups.filter((g) => g.kind === 'income').map(groupTile);
     const expenseTiles = groups.filter((g) => g.kind === 'expense').map(groupTile);
 
-    const accountTiles: DashboardTile[] = accounts.map((account) => ({
-      id: account.id,
-      kind: 'account',
-      color: account.color,
-      icon: account.icon,
-      label: account.name,
-      amount: balances.get(account.id) ?? account.openingBalance,
-      currency: account.currency,
-    }));
+    const accountTiles: DashboardTile[] = accounts
+      .filter((account) => account.type !== DEBT_TYPE)
+      .map((account) => ({
+        id: account.id,
+        kind: 'account',
+        color: account.color,
+        icon: account.icon,
+        label: account.name,
+        amount: balances.get(account.id) ?? account.openingBalance,
+        currency: account.currency,
+      }));
+    const debts = summarizeDebts(
+      accounts.filter((account) => account.type === DEBT_TYPE),
+      balances,
+      balancesInBase,
+    );
+    accountTiles.push({
+      id: DEBT_TILE_ID,
+      kind: 'debts',
+      color: DEBT_COLOR,
+      icon: DEBT_ICON,
+      label: t.debts.title,
+      amount: debts.total,
+      currency: baseCurrency,
+      incomplete: debts.missing.length > 0,
+    });
 
     // Each account contributes its balance converted into the base currency.
     // An account whose rate is unknown is left out rather than added at parity,

@@ -19,7 +19,7 @@ import styles from './RatesPage.module.css';
 export function RatesPage() {
   const t = useT();
   const settings = useSettings();
-  const accounts = useAccounts();
+  const accounts = useAccounts(false, true);
   const base = settings?.baseCurrency ?? 'USD';
 
   const quotes = [...new Set(accounts.map((account) => account.currency))].filter((code) => code !== base).sort();

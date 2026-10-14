@@ -23,13 +23,13 @@ export function ReportsPage() {
   const month = useBudgetMonthStore((s) => s.month);
   const setMonth = useBudgetMonthStore((s) => s.setMonth);
   const settings = useSettings();
-  const accounts = useAccounts();
+  const accounts = useAccounts(false, true);
   const allGroups = useCategoryGroups();
   const transactions = useTransactions();
   const payees = useLiveQuery(() => db.payees.toArray(), []) ?? [];
 
   const currency = settings?.baseCurrency ?? 'USD';
-  const opening = useOpeningBalancesInBase(currency);
+  const opening = useOpeningBalancesInBase(currency, true);
   const categories = allGroups.flatMap((g) => g.categories);
 
   const { income, expense } = incomeExpenseTotals(transactions, month);

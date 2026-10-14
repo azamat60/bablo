@@ -6,7 +6,7 @@
  * target and then rejects the drop.
  */
 
-export type DragKind = 'incomeGroup' | 'account' | 'expenseGroup';
+export type DragKind = 'incomeGroup' | 'account' | 'expenseGroup' | 'debts';
 
 export type DragItem = {
   id: string;
@@ -25,7 +25,8 @@ export type DropTargetMeta = {
 export type DropOutcome =
   | { kind: 'income'; accountId: string; groupId: string }
   | { kind: 'expense'; accountId: string; groupId: string }
-  | { kind: 'transfer'; fromAccountId: string; toAccountId: string };
+  | { kind: 'transfer'; fromAccountId: string; toAccountId: string }
+  | { kind: 'debt'; accountId: string; direction: 'out' | 'in' };
 
 /**
  * Returns the transaction a drop would create, or null if the pairing is
@@ -33,6 +34,12 @@ export type DropOutcome =
  */
 export function resolveDrop(source: DragItem, target: DropTargetMeta): DropOutcome | null {
   if (source.id === target.id) return null;
+  if (source.kind === 'account' && target.kind === 'debts') {
+    return { kind: 'debt', accountId: source.id, direction: 'out' };
+  }
+  if (source.kind === 'debts' && target.kind === 'account') {
+    return { kind: 'debt', accountId: target.id, direction: 'in' };
+  }
 
   // Income flows from a category into an account.
   if (source.kind === 'incomeGroup' && target.kind === 'account') {
@@ -78,5 +85,11 @@ export function dropToDraft(outcome: DropOutcome) {
       return { kind: 'expense' as const, accountId: outcome.accountId, groupId: outcome.groupId };
     case 'transfer':
       return { kind: 'transfer' as const, accountId: outcome.fromAccountId, toAccountId: outcome.toAccountId };
+    case 'debt':
+      return {
+        kind: 'transfer' as const,
+        accountId: outcome.direction === 'out' ? outcome.accountId : undefined,
+        toAccountId: outcome.direction === 'in' ? outcome.accountId : undefined,
+      };
   }
 }

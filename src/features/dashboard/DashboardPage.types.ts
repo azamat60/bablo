@@ -9,6 +9,7 @@ export type DashboardTile = {
   /** Signed minor units: period activity for groups, current balance for accounts. */
   amount: number;
   currency: string;
+  incomplete?: boolean;
   /** Assigned budget for the month, expense groups only. */
   assigned?: number;
 };

@@ -108,12 +108,12 @@ export function useComposerDraft() {
   const draft = useTxDraftStore((s) => s.draft);
   const patch = useTxDraftStore((s) => s.patch);
 
-  const accounts = useAccounts();
+  const accounts = useAccounts(false, draft.kind === 'transfer');
   const groups = useCategoryGroups();
 
   // Fall back to the first account rather than blocking Save on a choice the
   // user almost never wants to make.
-  const accountId = draft.accountId ?? accounts[0]?.id;
+  const accountId = draft.accountId ?? accounts.find((item) => item.type !== 'debt')?.id;
   const account = accounts.find((a) => a.id === accountId);
   const toAccount = accounts.find((a) => a.id === draft.toAccountId);
   const group = groups.find((g) => g.id === draft.groupId);
@@ -137,6 +137,8 @@ export function useComposerDraft() {
     if (draft.kind === 'transfer') {
       if (!toAccount) return { canSave: false, reason: t.composer.reasonNoAccount };
       if (draft.toAccountId === accountId) return { canSave: false, reason: t.composer.reasonSameAccount };
+      if (account.type === 'debt' && toAccount.type === 'debt')
+        return { canSave: false, reason: t.debts.chooseWalletOrPerson };
       return { canSave: true };
     }
     if (splitMode) {
