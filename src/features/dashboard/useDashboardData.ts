@@ -69,17 +69,16 @@ export function useDashboardData(period: Period): DashboardData {
     const incomeTiles = groups.filter((g) => g.kind === 'income').map(groupTile);
     const expenseTiles = groups.filter((g) => g.kind === 'expense').map(groupTile);
 
-    const accountTiles: DashboardTile[] = accounts
-      .filter((account) => account.type !== DEBT_TYPE)
-      .map((account) => ({
-        id: account.id,
-        kind: 'account',
-        color: account.color,
-        icon: account.icon,
-        label: account.name,
-        amount: balances.get(account.id) ?? account.openingBalance,
-        currency: account.currency,
-      }));
+    const walletAccounts = accounts.filter((account) => account.type !== DEBT_TYPE);
+    const accountTiles: DashboardTile[] = walletAccounts.map((account) => ({
+      id: account.id,
+      kind: 'account',
+      color: account.color,
+      icon: account.icon,
+      label: account.name,
+      amount: balances.get(account.id) ?? account.openingBalance,
+      currency: account.currency,
+    }));
     const debts = summarizeDebts(
       accounts.filter((account) => account.type === DEBT_TYPE),
       balances,
@@ -99,7 +98,7 @@ export function useDashboardData(period: Period): DashboardData {
     // Each account contributes its balance converted into the base currency.
     // An account whose rate is unknown is left out rather than added at parity,
     // so the total is either right or visibly incomplete.
-    const converted = accounts.map((account) => balancesInBase.get(account.id));
+    const converted = walletAccounts.map((account) => balancesInBase.get(account.id));
     const accountsTotal = converted.reduce<number>((sum, value) => sum + (value ?? 0), 0);
     const missingRates = converted.some((value) => value === undefined);
     const accountsCurrency = baseCurrency;
