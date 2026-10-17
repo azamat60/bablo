@@ -118,7 +118,7 @@ export const ru: Dictionary = {
     addAccount: 'Добавить счёт',
     showAmounts: 'Показать суммы',
     hideAmounts: 'Скрыть суммы',
-    netWorth: 'Чистые активы',
+    totalBalance: 'Всего на счетах',
     assets: 'Активы',
     liabilities: 'Обязательства',
     empty: 'Пока нет счетов',

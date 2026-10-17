@@ -114,7 +114,7 @@ export const en = {
     addAccount: 'Add account',
     showAmounts: 'Show amounts',
     hideAmounts: 'Hide amounts',
-    netWorth: 'Net Worth',
+    totalBalance: 'Total account balance',
     assets: 'Assets',
     liabilities: 'Liabilities',
     empty: 'No accounts yet',
