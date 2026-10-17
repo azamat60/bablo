@@ -15,7 +15,7 @@ import { AccountSection } from './AccountSection';
 import styles from './AccountsPage.module.css';
 
 export function AccountsPage() {
-  const accounts = useAccounts(false, true);
+  const accounts = useAccounts();
   const settings = useSettings();
   // Rows show each account in its own currency; every total has to be
   // converted first, or сом and ₺ get added together.
@@ -55,7 +55,7 @@ export function AccountsPage() {
             {hideAmounts ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
           </button>
         </div>
-        <div className={styles.heroLabel}>{t.accounts.netWorth}</div>
+        <div className={styles.heroLabel}>{t.accounts.totalBalance}</div>
         <div className={styles.heroValue}>{hideAmounts ? '••••••' : formatMoney(netWorth, currency)}</div>
         <div className={styles.heroSplit}>
           <div>
