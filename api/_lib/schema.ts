@@ -1,4 +1,5 @@
 import type { CategoryLabels } from './categories.js';
+import { buildReceiptItemsSchema, RECEIPT_TOTAL_SCHEMA } from './receipt.js';
 
 export function buildDraftSchema(labels: CategoryLabels) {
   return {
@@ -27,7 +28,9 @@ export function buildDraftSchema(labels: CategoryLabels) {
           required: ['amount', 'direction', 'memo', 'category', 'confidence'],
         },
       },
+      receiptItems: buildReceiptItemsSchema(labels),
+      receiptTotal: RECEIPT_TOTAL_SCHEMA,
     },
-    required: ['merchant', 'date', 'currency', 'transactions'],
+    required: ['merchant', 'date', 'currency', 'transactions', 'receiptItems', 'receiptTotal'],
   } as const;
 }

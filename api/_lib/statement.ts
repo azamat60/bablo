@@ -2,6 +2,13 @@ import type OpenAI from 'openai';
 import { categoryListText, labelCategories, resolveCategoryId, type CategoryLabels } from './categories.js';
 import { CATEGORY_GUESSING_RULES } from './prompt.js';
 import { appendCategoryGuess } from '../../shared/categoryGuess.js';
+import {
+  buildReceiptItemsSchema,
+  groupReceiptItems,
+  RECEIPT_ITEM_RULES,
+  RECEIPT_TOTAL_SCHEMA,
+  type RawReceiptItem,
+} from './receipt.js';
 import type { AiRequestContext, AiStatement, AiStatementTransaction } from './types.js';
 
 export const STATEMENT_MAX_BYTES = 4 * 1024 * 1024;
@@ -28,6 +35,9 @@ export function buildStatementPrompt(context: AiRequestContext, labels: Category
     'When an expense description is unclear, use merchant spelling, abbreviations, business type and surrounding statement context to choose the most plausible listed expense category. Mark categoryGuessed true whenever the purpose or category is inferred from ambiguous clues. Do not invent purchases, merchants, dates or amounts to justify a category.',
     'For an inferred category set confidence below 0.8 and write a short categoryReason in Russian explaining the actual clue and possible purpose. confidence is your subjective estimate from 0 to 1, including category uncertainty, not a calibrated probability. A clearly identified merchant or explicit purchase can have categoryGuessed false and categoryReason null. If no clue exists, use an uncategorized category, categoryGuessed true and low confidence; explain that the purpose is unknown.',
     'For transfers pick any listed category of the matching direction and set a low confidence.',
+    'The PDF may instead be a shop receipt (кассовый чек, фискальный чек, товарный чек, online store order receipt) rather than a bank statement. Then set documentType "receipt", leave transactions empty and fill receiptMerchant, receiptDate, receiptTotal and receiptItems; the app groups the items by category itself. A refund receipt (возврат прихода) is not itemised: treat it as a statement with one income transaction.',
+    'For a bank statement set documentType "statement", receiptItems empty and the other receipt fields null.',
+    ...RECEIPT_ITEM_RULES,
     `Known payee names, for spelling consistency when you recognize one: ${payeeList}`,
   ].join('\n');
 }
@@ -37,6 +47,7 @@ export function buildStatementSchema(labels: CategoryLabels) {
     type: 'object',
     additionalProperties: false,
     properties: {
+      documentType: { type: 'string', enum: ['statement', 'receipt'] },
       accountName: {
         type: ['string', 'null'],
         description: 'Bank, product or masked account name shown on the statement',
@@ -87,8 +98,23 @@ export function buildStatementSchema(labels: CategoryLabels) {
           ],
         },
       },
+      receiptMerchant: { type: ['string', 'null'], description: 'Store name of a receipt, or null' },
+      receiptDate: { type: ['string', 'null'], description: 'ISO date yyyy-MM-dd of a receipt, or null' },
+      receiptTotal: RECEIPT_TOTAL_SCHEMA,
+      receiptItems: buildReceiptItemsSchema(labels),
     },
-    required: ['accountName', 'currency', 'periodStart', 'periodEnd', 'transactions'],
+    required: [
+      'documentType',
+      'accountName',
+      'currency',
+      'periodStart',
+      'periodEnd',
+      'transactions',
+      'receiptMerchant',
+      'receiptDate',
+      'receiptTotal',
+      'receiptItems',
+    ],
   } as const;
 }
 
@@ -98,7 +124,14 @@ type RawStatementTransaction = Omit<AiStatementTransaction, 'categoryId'> & {
   categoryGuessed: boolean;
   categoryReason: string | null;
 };
-type RawStatement = Omit<AiStatement, 'transactions'> & { transactions: RawStatementTransaction[] };
+type RawStatement = Omit<AiStatement, 'transactions'> & {
+  transactions: RawStatementTransaction[];
+  documentType?: 'statement' | 'receipt';
+  receiptMerchant?: string | null;
+  receiptDate?: string | null;
+  receiptTotal?: number | null;
+  receiptItems?: RawReceiptItem[];
+};
 
 const PRINTED_SIGN = /^\s*([+\-−–])/;
 
@@ -123,6 +156,30 @@ function normaliseTransaction(raw: RawStatementTransaction, labels: CategoryLabe
   const reason = matchesKind ? categoryReason : 'Исходная категория не подходит; назначена категория для проверки';
   const memo = guessed ? appendCategoryGuess(tx.memo, label, confidence, reason) : tx.memo;
   return { ...tx, kind, categoryId, confidence, memo };
+}
+
+function receiptTransactions(statement: RawStatement, labels: CategoryLabels, today: string): AiStatementTransaction[] {
+  if (statement.documentType !== 'receipt') return [];
+
+  const date = statement.receiptDate ?? statement.periodEnd ?? today;
+  const payee = statement.receiptMerchant ?? null;
+  const groups = groupReceiptItems(statement.receiptItems ?? [], statement.receiptTotal ?? null, labels);
+
+  return groups.map(({ categoryId, amount, memo, confidence }) => ({
+    date,
+    amount,
+    kind: 'expense',
+    payee,
+    categoryId,
+    memo,
+    confidence,
+  }));
+}
+
+function statementTransactions(statement: RawStatement, labels: CategoryLabels): AiStatementTransaction[] {
+  return statement.transactions
+    .map((tx) => normaliseTransaction(tx, labels))
+    .filter((tx): tx is AiStatementTransaction => tx !== null);
 }
 
 type ParseStatementInput = {
@@ -166,10 +223,24 @@ export async function parseStatement({
   const raw = response.output_text;
   if (!raw) throw new Error('Model returned no output');
   const statement = JSON.parse(raw) as RawStatement;
+  const fromReceipt = receiptTransactions(statement, labels, context.today);
+  const receiptDate = fromReceipt[0]?.date ?? null;
+
+  if (fromReceipt.length > 0) {
+    return {
+      accountName: statement.accountName,
+      currency: statement.currency,
+      periodStart: receiptDate,
+      periodEnd: receiptDate,
+      transactions: fromReceipt,
+    };
+  }
+
   return {
-    ...statement,
-    transactions: statement.transactions
-      .map((tx) => normaliseTransaction(tx, labels))
-      .filter((tx): tx is AiStatementTransaction => tx !== null),
+    accountName: statement.accountName,
+    currency: statement.currency,
+    periodStart: statement.periodStart,
+    periodEnd: statement.periodEnd,
+    transactions: statementTransactions(statement, labels),
   };
 }

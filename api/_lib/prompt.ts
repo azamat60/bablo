@@ -1,5 +1,6 @@
 import type { CategoryLabels } from './categories.js';
 import { categoryListText } from './categories.js';
+import { RECEIPT_ITEM_RULES } from './receipt.js';
 import type { AiRequestContext } from './types.js';
 
 export const CATEGORY_GUESSING_RULES = [
@@ -21,7 +22,9 @@ export function buildSystemPrompt(context: AiRequestContext, labels: CategoryLab
     'You are an expense/income parser for a personal finance app.',
     `Today's date is ${context.today} in timezone ${context.timezone}.`,
     `The user's base currency is ${context.baseCurrency}. If no currency is stated in the input, assume ${context.baseCurrency}.`,
-    'Extract one transaction per distinct purchase or payment mentioned. A single receipt or sentence can produce multiple transactions if it clearly describes multiple unrelated purchases.',
+    'Extract one transaction per distinct purchase or payment mentioned. A single sentence can produce multiple transactions if it clearly describes multiple unrelated purchases.',
+    'When the input is an itemised shop receipt (a photo or text of a кассовый / фискальный чек with item lines), leave transactions empty and fill receiptItems and receiptTotal instead; the app groups the items by category itself. For any other input receiptItems is empty and receiptTotal is null. A refund receipt (возврат) is not itemised: book it as one income transaction.',
+    ...RECEIPT_ITEM_RULES,
     'direction is "income" when the user received money (salary, refund, gift, someone paid them back, a "+" amount) and "expense" when they paid.',
     'For each transaction choose exactly one category from this list, written as "Group / Name". Copy the label exactly; never invent one that is not listed:',
     categoryListText(labels),
